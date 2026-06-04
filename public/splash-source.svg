@@ -1,0 +1,21 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" fill="#15131f"/>
+  <g transform="translate(512,400) scale(3.4) translate(-60,-60)">
+    <rect x="8" y="14" width="104" height="98" rx="26" fill="url(#g1)"/>
+    <rect x="8" y="14" width="104" height="26" rx="13" fill="#3730a3"/>
+    <rect x="8" y="30" width="104" height="12" fill="#3730a3"/>
+    <rect x="34" y="6" width="9" height="20" rx="4.5" fill="#fbbf24"/>
+    <rect x="77" y="6" width="9" height="20" rx="4.5" fill="#fbbf24"/>
+    <path d="M78 58 Q78 50 66 50 L52 50 Q42 50 42 60 Q42 69 52 69 L66 69 Q78 69 78 79 Q78 90 66 90 L50 90 Q42 90 42 82"
+          fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="86" cy="58" r="6" fill="#fb7185"/>
+  </g>
+  <text x="512" y="760" font-family="Georgia,serif" font-size="68" font-weight="700" fill="#fff" text-anchor="middle">Agenda<tspan fill="#a78bfa">Sonay</tspan></text>
+  <text x="512" y="810" font-family="sans-serif" font-size="22" letter-spacing="6" fill="#8b8699" text-anchor="middle">SEU NEGOCIO ORGANIZADO</text>
+</svg>
