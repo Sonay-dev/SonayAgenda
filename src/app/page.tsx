@@ -115,6 +115,11 @@ function LoginForm() {
             </Link>
           </div>
         </form>
+
+        <p className="mx-auto mt-4 max-w-[400px] px-2 text-center text-[12px] leading-relaxed text-white/50">
+          Esta área é para profissionais. Clientes devem usar o link enviado
+          pelo seu prestador de serviço.
+        </p>
       </main>
     </Splash>
   );
