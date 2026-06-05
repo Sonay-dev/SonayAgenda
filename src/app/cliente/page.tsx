@@ -53,7 +53,6 @@ function ClienteAgendamento() {
 
   const [carregando, setCarregando] = useState(true);
   const [erroCarga, setErroCarga] = useState<string | null>(null); // link invalido/inativo
-  const [detalhe, setDetalhe] = useState<string | null>(null); // detalhe tecnico p/ debug
   const [erro, setErro] = useState<string | null>(null); // erro ao confirmar
   const [ok, setOk] = useState(false);
 
@@ -82,7 +81,6 @@ function ClienteAgendamento() {
       const { data: ativos, error } = await supabase.rpc("profissionais_ativos");
       if (error) {
         setErroCarga("Não foi possível carregar agora. Tente novamente.");
-        setDetalhe(`profissionais_ativos: ${error.message}`);
         setCarregando(false);
         return;
       }
@@ -90,9 +88,6 @@ function ClienteAgendamento() {
       if (!p) {
         setErroCarga(
           "Link inválido ou negócio indisponível no momento. Peça um novo link ao seu profissional.",
-        );
-        setDetalhe(
-          `profissionais_ativos retornou ${((ativos as Profissional[]) ?? []).length} negócio(s) ativo(s); nenhum com id=${profId}`,
         );
         setCarregando(false);
         return;
@@ -103,14 +98,12 @@ function ClienteAgendamento() {
         supabase.rpc("servicos_publico", { p_profissional_id: profId }),
         supabase.rpc("horarios_publico", { p_profissional_id: profId }),
       ]);
-      if (srv.error) setDetalhe(`servicos_publico: ${srv.error.message}`);
-      else {
+      if (!srv.error) {
         const lista = (srv.data as Servico[]) ?? [];
         setServicos(lista);
         setServico(lista[0]?.nome ?? "");
       }
-      if (jan.error) setDetalhe(`horarios_publico: ${jan.error.message}`);
-      else setJanelas((jan.data as Janela[]) ?? []);
+      if (!jan.error) setJanelas((jan.data as Janela[]) ?? []);
 
       setCarregando(false);
     })();
@@ -228,11 +221,6 @@ function ClienteAgendamento() {
             Não foi possível abrir
           </h1>
           <p className="mt-2 leading-relaxed text-[#666]">{erroCarga}</p>
-          {detalhe && (
-            <p className="mt-4 max-w-[460px] break-words rounded-lg bg-[#f0ece2] px-3 py-2 font-mono text-[11px] text-[#888]">
-              {detalhe}
-            </p>
-          )}
         </main>
       </>
     );
