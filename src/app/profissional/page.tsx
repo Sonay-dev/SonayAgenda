@@ -21,6 +21,7 @@ type LinhaHorario = {
   hora_inicio: string;
   hora_fim: string;
 };
+type Servico = { id: string; nome: string; duracao_min: number };
 
 const DIAS = [
   "Domingo",
@@ -67,6 +68,14 @@ export default function ProfissionalPage() {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [cancelandoId, setCancelandoId] = useState<string | null>(null);
 
+  const [servicos, setServicos] = useState<Servico[]>([]);
+  const [novoNome, setNovoNome] = useState("");
+  const [novaDuracao, setNovaDuracao] = useState(30);
+  const [salvandoServico, setSalvandoServico] = useState(false);
+  const [removendoServicoId, setRemovendoServicoId] = useState<string | null>(
+    null,
+  );
+
   const [dias, setDias] = useState<DiaConfig[]>(
     DIAS.map(() => ({ ...HORARIO_PADRAO })),
   );
@@ -110,8 +119,8 @@ export default function ProfissionalPage() {
       }
       setProf(p as Profissional);
 
-      // Agendamentos + horários (RLS já filtra para os próprios)
-      const [ags, hrs] = await Promise.all([
+      // Agendamentos + horários + serviços (RLS já filtra para os próprios)
+      const [ags, hrs, srv] = await Promise.all([
         supabase
           .from("agendamentos")
           .select(
@@ -122,10 +131,16 @@ export default function ProfissionalPage() {
         supabase
           .from("horarios_disponiveis")
           .select("dia_semana, hora_inicio, hora_fim"),
+        supabase
+          .from("servicos")
+          .select("id, nome, duracao_min")
+          .order("nome", { ascending: true }),
       ]);
 
       if (ags.error) setErro(ags.error.message);
       else setAgendamentos((ags.data as Agendamento[]) ?? []);
+
+      if (!srv.error) setServicos((srv.data as Servico[]) ?? []);
 
       if (!hrs.error && hrs.data) {
         const base = DIAS.map(() => ({ ...HORARIO_PADRAO }));
@@ -237,6 +252,54 @@ export default function ProfissionalPage() {
 
   function atualizarDia(i: number, patch: Partial<DiaConfig>) {
     setDias((prev) => prev.map((d, idx) => (idx === i ? { ...d, ...patch } : d)));
+  }
+
+  // ---------- Serviços ----------
+  async function adicionarServico(e: React.FormEvent) {
+    e.preventDefault();
+    if (!prof) return;
+    const nome = novoNome.trim();
+    if (nome.length < 2) {
+      setErro("Dê um nome ao serviço (mínimo 2 caracteres).");
+      return;
+    }
+    if (!Number.isFinite(novaDuracao) || novaDuracao <= 0) {
+      setErro("A duração precisa ser maior que zero.");
+      return;
+    }
+    setErro(null);
+    setSalvandoServico(true);
+    const { data, error } = await supabase
+      .from("servicos")
+      .insert({
+        profissional_id: prof.id,
+        nome,
+        duracao_min: novaDuracao,
+      })
+      .select("id, nome, duracao_min")
+      .single();
+    setSalvandoServico(false);
+    if (error) {
+      setErro(error.message);
+      return;
+    }
+    setServicos((prev) =>
+      [...prev, data as Servico].sort((a, b) => a.nome.localeCompare(b.nome)),
+    );
+    setNovoNome("");
+    setNovaDuracao(30);
+  }
+
+  async function removerServico(id: string) {
+    setErro(null);
+    setRemovendoServicoId(id);
+    const { error } = await supabase.from("servicos").delete().eq("id", id);
+    setRemovendoServicoId(null);
+    if (error) {
+      setErro(error.message);
+      return;
+    }
+    setServicos((prev) => prev.filter((s) => s.id !== id));
   }
 
   // ---------- Link público ----------
@@ -365,6 +428,83 @@ export default function ProfissionalPage() {
               {copiado ? "Copiado!" : "Copiar link"}
             </button>
           </div>
+        </section>
+
+        {/* ---------- Serviços ---------- */}
+        <section className="mt-6 rounded-[14px] border border-[#e6e0d4] bg-white p-5">
+          <h2 className="font-display text-lg font-semibold">Serviços</h2>
+          <p className="mt-1 text-sm text-[#777]">
+            Cadastre os serviços que o cliente pode escolher ao marcar horário.
+          </p>
+
+          {/* lista */}
+          <div className="mt-4 space-y-2">
+            {servicos.length === 0 ? (
+              <p className="text-sm text-[#999]">
+                Nenhum serviço cadastrado ainda. Adicione o primeiro abaixo.
+              </p>
+            ) : (
+              servicos.map((s) => (
+                <div
+                  key={s.id}
+                  className="flex items-center justify-between gap-3 rounded-[10px] border border-[#e6e0d4] bg-[#fafaf7] px-3.5 py-2.5"
+                >
+                  <div>
+                    <span className="font-medium">{s.nome}</span>
+                    <span className="ml-2 text-[13px] text-[#888]">
+                      {s.duracao_min} min
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => removerServico(s.id)}
+                    disabled={removendoServicoId === s.id}
+                    className="rounded-[7px] border border-[#e6e0d4] bg-white px-3 py-1.5 text-[13px] font-medium text-[#c0392b] disabled:opacity-50"
+                  >
+                    {removendoServicoId === s.id ? "Removendo..." : "Remover"}
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* adicionar */}
+          <form
+            onSubmit={adicionarServico}
+            className="mt-4 flex flex-wrap items-end gap-3 border-t border-[#f0ece2] pt-4"
+          >
+            <div className="flex-1 min-w-[180px]">
+              <label className="mb-1.5 block text-[13px] font-medium text-[#666]">
+                Nome do serviço
+              </label>
+              <input
+                value={novoNome}
+                onChange={(e) => setNovoNome(e.target.value)}
+                placeholder="Ex.: Corte de cabelo"
+                className="w-full rounded-lg border border-[#e6e0d4] bg-[#fafaf7] px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="w-[120px]">
+              <label className="mb-1.5 block text-[13px] font-medium text-[#666]">
+                Duração (min)
+              </label>
+              <input
+                type="number"
+                min={5}
+                step={5}
+                value={novaDuracao}
+                onChange={(e) => setNovaDuracao(Number(e.target.value))}
+                className="w-full rounded-lg border border-[#e6e0d4] bg-[#fafaf7] px-3 py-2 text-sm"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={salvandoServico}
+              className="rounded-[9px] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              style={{ background: cor }}
+            >
+              {salvandoServico ? "Adicionando..." : "Adicionar"}
+            </button>
+          </form>
         </section>
 
         {/* ---------- Horários de atendimento ---------- */}
