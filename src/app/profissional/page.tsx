@@ -1,20 +1,516 @@
-import Link from "next/link";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { corDoNicho, NICHOS, type Nicho } from "@/lib/nichos";
+
+// ---------- Tipos das tabelas (RLS garante: só os próprios dados) ----------
+type Profissional = { id: string; nome: string; nicho: string };
+type Agendamento = {
+  id: string;
+  cliente_nome: string;
+  cliente_telefone: string;
+  servico: string;
+  data: string; // YYYY-MM-DD
+  hora: string; // HH:MM:SS
+  status: "confirmado" | "cancelado";
+};
+type LinhaHorario = {
+  dia_semana: number;
+  hora_inicio: string;
+  hora_fim: string;
+};
+
+const DIAS = [
+  "Domingo",
+  "Segunda-feira",
+  "Terça-feira",
+  "Quarta-feira",
+  "Quinta-feira",
+  "Sexta-feira",
+  "Sábado",
+];
+
+// Estado editável de uma janela de atendimento (1 faixa por dia, no MVP).
+type DiaConfig = { ativo: boolean; inicio: string; fim: string };
+const HORARIO_PADRAO: DiaConfig = {
+  ativo: false,
+  inicio: "09:00",
+  fim: "18:00",
+};
+
+// ---------- helpers ----------
+const hhmm = (t: string) => t.slice(0, 5);
+const hojeISO = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
+function addDias(iso: string, n: number): string {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + n);
+  return d.toLocaleDateString("en-CA");
+}
+function dataPorExtenso(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`).toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+  });
+  return d.charAt(0).toUpperCase() + d.slice(1);
+}
 
 export default function ProfissionalPage() {
+  const router = useRouter();
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const [prof, setProf] = useState<Profissional | null>(null);
+  const [semPerfil, setSemPerfil] = useState(false);
+
+  const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
+  const [cancelandoId, setCancelandoId] = useState<string | null>(null);
+
+  const [dias, setDias] = useState<DiaConfig[]>(
+    DIAS.map(() => ({ ...HORARIO_PADRAO })),
+  );
+  const [salvandoHorarios, setSalvandoHorarios] = useState(false);
+  const [horariosOk, setHorariosOk] = useState(false);
+
+  const [copiado, setCopiado] = useState(false);
+
+  const cor = prof ? corDoNicho(prof.nicho) : "#1a1a1a";
+  const rotuloNicho = prof
+    ? (NICHOS[prof.nicho as Nicho]?.rotulo ?? prof.nicho)
+    : "";
+
+  // ---------- Carregar dados do profissional logado ----------
+  useEffect(() => {
+    // IIFE: os setState ocorrem só depois do await (nao sincronos no efeito).
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace("/");
+        return;
+      }
+
+      // Perfil (RLS: profissional_le_proprio)
+      const { data: p, error: erroProf } = await supabase
+        .from("profissionais")
+        .select("id, nome, nicho")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (erroProf) {
+        setErro(erroProf.message);
+        setCarregando(false);
+        return;
+      }
+      if (!p) {
+        setSemPerfil(true);
+        setCarregando(false);
+        return;
+      }
+      setProf(p as Profissional);
+
+      // Agendamentos + horários (RLS já filtra para os próprios)
+      const [ags, hrs] = await Promise.all([
+        supabase
+          .from("agendamentos")
+          .select(
+            "id, cliente_nome, cliente_telefone, servico, data, hora, status",
+          )
+          .order("data", { ascending: true })
+          .order("hora", { ascending: true }),
+        supabase
+          .from("horarios_disponiveis")
+          .select("dia_semana, hora_inicio, hora_fim"),
+      ]);
+
+      if (ags.error) setErro(ags.error.message);
+      else setAgendamentos((ags.data as Agendamento[]) ?? []);
+
+      if (!hrs.error && hrs.data) {
+        const base = DIAS.map(() => ({ ...HORARIO_PADRAO }));
+        for (const h of hrs.data as LinhaHorario[]) {
+          if (h.dia_semana >= 0 && h.dia_semana <= 6) {
+            base[h.dia_semana] = {
+              ativo: true,
+              inicio: hhmm(h.hora_inicio),
+              fim: hhmm(h.hora_fim),
+            };
+          }
+        }
+        setDias(base);
+      }
+
+      setCarregando(false);
+    })();
+  }, [router]);
+
+  // ---------- Resumo (só confirmados) ----------
+  const resumo = useMemo(() => {
+    const hoje = hojeISO();
+    const dow = new Date(`${hoje}T00:00:00`).getDay();
+    const inicioSemana = addDias(hoje, -dow);
+    const fimSemana = addDias(inicioSemana, 6);
+    const confirmados = agendamentos.filter((a) => a.status === "confirmado");
+    return {
+      hoje: confirmados.filter((a) => a.data === hoje).length,
+      semana: confirmados.filter(
+        (a) => a.data >= inicioSemana && a.data <= fimSemana,
+      ).length,
+      total: confirmados.length,
+    };
+  }, [agendamentos]);
+
+  // ---------- Agenda agrupada por dia ----------
+  const porDia = useMemo(() => {
+    const grupos = new Map<string, Agendamento[]>();
+    for (const a of agendamentos) {
+      const lista = grupos.get(a.data) ?? [];
+      lista.push(a);
+      grupos.set(a.data, lista);
+    }
+    return [...grupos.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [agendamentos]);
+
+  // ---------- Cancelar agendamento ----------
+  async function cancelar(id: string) {
+    setCancelandoId(id);
+    const { error } = await supabase
+      .from("agendamentos")
+      .update({ status: "cancelado" })
+      .eq("id", id);
+    setCancelandoId(null);
+    if (error) {
+      setErro(error.message);
+      return;
+    }
+    setAgendamentos((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, status: "cancelado" } : a)),
+    );
+  }
+
+  // ---------- Salvar horários de atendimento ----------
+  async function salvarHorarios() {
+    if (!prof) return;
+    setErro(null);
+    setHorariosOk(false);
+
+    const ativos = dias
+      .map((d, dia_semana) => ({ ...d, dia_semana }))
+      .filter((d) => d.ativo);
+
+    if (ativos.some((d) => d.fim <= d.inicio)) {
+      setErro("Em algum dia o horário de fim não é maior que o de início.");
+      return;
+    }
+
+    setSalvandoHorarios(true);
+    // Estratégia simples: apaga tudo do profissional e regrava os ativos.
+    const del = await supabase
+      .from("horarios_disponiveis")
+      .delete()
+      .eq("profissional_id", prof.id);
+    if (del.error) {
+      setSalvandoHorarios(false);
+      setErro(del.error.message);
+      return;
+    }
+    if (ativos.length) {
+      const ins = await supabase.from("horarios_disponiveis").insert(
+        ativos.map((d) => ({
+          profissional_id: prof.id,
+          dia_semana: d.dia_semana,
+          hora_inicio: d.inicio,
+          hora_fim: d.fim,
+        })),
+      );
+      if (ins.error) {
+        setSalvandoHorarios(false);
+        setErro(ins.error.message);
+        return;
+      }
+    }
+    setSalvandoHorarios(false);
+    setHorariosOk(true);
+    setTimeout(() => setHorariosOk(false), 2500);
+  }
+
+  function atualizarDia(i: number, patch: Partial<DiaConfig>) {
+    setDias((prev) => prev.map((d, idx) => (idx === i ? { ...d, ...patch } : d)));
+  }
+
+  // ---------- Link público ----------
+  async function copiarLink() {
+    if (!prof) return;
+    const link = `${window.location.origin}/cliente?id=${prof.id}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      setErro("Não consegui copiar. Copie manualmente: " + link);
+    }
+  }
+
+  async function sair() {
+    await supabase.auth.signOut();
+    router.replace("/");
+  }
+
+  // =====================================================================
+  if (carregando) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f4f1ea] text-[#999]">
+        Carregando seu painel...
+      </main>
+    );
+  }
+
+  if (semPerfil) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f4f1ea] px-6 text-center">
+        <p className="max-w-sm text-[#666]">
+          Este login não tem um negócio cadastrado. Se você é o administrador,
+          acesse o painel de administração.
+        </p>
+        <button
+          onClick={sair}
+          className="rounded-[9px] bg-[#1a1a1a] px-5 py-2.5 font-medium text-white"
+        >
+          Sair
+        </button>
+      </main>
+    );
+  }
+
+  const campoHora =
+    "rounded-lg border border-[#e6e0d4] bg-[#fafaf7] px-2.5 py-1.5 text-sm";
+
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-16">
-      <span
-        className="block h-2 w-12 rounded-full"
-        style={{ backgroundColor: "var(--nicho-estetica)" }}
-      />
-      <h1 className="mt-4 text-3xl font-semibold">Area do Profissional</h1>
-      <p className="mt-3 max-w-xl opacity-75">
-        Aqui o profissional vai gerenciar a propria agenda, horarios de
-        atendimento e ver os dias agendados. (Em construcao.)
-      </p>
-      <Link href="/" className="mt-8 inline-block text-sm underline opacity-70">
-        &larr; Voltar
-      </Link>
-    </main>
+    <div className="min-h-screen bg-[#f4f1ea] text-[#1a1a1a]">
+      {/* ---------- Cabeçalho ---------- */}
+      <header className="bg-[#1a1a1a] text-[#f4f1ea]">
+        <div className="mx-auto flex max-w-[1000px] items-center justify-between gap-3 px-5 py-4">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="font-display text-xl font-semibold">
+                {prof?.nome}
+              </h1>
+              <span
+                className="rounded-full px-2.5 py-0.5 text-xs font-bold"
+                style={{ background: cor + "33", color: "#fff" }}
+              >
+                {rotuloNicho}
+              </span>
+            </div>
+            <p className="mt-0.5 text-xs opacity-60">Painel do profissional</p>
+          </div>
+          <button
+            onClick={sair}
+            className="rounded-[9px] border border-white/20 px-4 py-2 text-sm font-medium transition hover:bg-white/10"
+          >
+            Sair
+          </button>
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-[1000px] px-5 py-7">
+        {erro && (
+          <div className="mb-5 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {erro}
+          </div>
+        )}
+
+        {/* ---------- Cards de resumo ---------- */}
+        <section className="grid grid-cols-3 gap-3">
+          {[
+            { rotulo: "Hoje", valor: resumo.hoje },
+            { rotulo: "Esta semana", valor: resumo.semana },
+            { rotulo: "Total confirmados", valor: resumo.total },
+          ].map((c) => (
+            <div
+              key={c.rotulo}
+              className="rounded-[14px] border border-[#e6e0d4] bg-white p-4"
+            >
+              <div className="text-xs text-[#999]">{c.rotulo}</div>
+              <div
+                className="mt-1 font-display text-3xl font-bold"
+                style={{ color: cor }}
+              >
+                {c.valor}
+              </div>
+            </div>
+          ))}
+        </section>
+
+        {/* ---------- Link público ---------- */}
+        <section className="mt-6 rounded-[14px] border border-[#e6e0d4] bg-white p-5">
+          <h2 className="font-display text-lg font-semibold">
+            Link para seus clientes
+          </h2>
+          <p className="mt-1 text-sm text-[#777]">
+            Envie este link para o cliente marcar horário — sem precisar de
+            login.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <code className="flex-1 overflow-x-auto rounded-lg border border-[#e6e0d4] bg-[#fafaf7] px-3 py-2 text-sm text-[#555]">
+              {typeof window !== "undefined" ? window.location.origin : ""}
+              /cliente?id={prof?.id}
+            </code>
+            <button
+              onClick={copiarLink}
+              className="rounded-[9px] px-4 py-2 text-sm font-bold text-white"
+              style={{ background: copiado ? "#2a8a4a" : "#1a1a1a" }}
+            >
+              {copiado ? "Copiado!" : "Copiar link"}
+            </button>
+          </div>
+        </section>
+
+        {/* ---------- Horários de atendimento ---------- */}
+        <section className="mt-6 rounded-[14px] border border-[#e6e0d4] bg-white p-5">
+          <h2 className="font-display text-lg font-semibold">
+            Horários de atendimento
+          </h2>
+          <p className="mt-1 text-sm text-[#777]">
+            Marque os dias que você atende e o horário de cada um.
+          </p>
+
+          <div className="mt-4 space-y-2">
+            {dias.map((d, i) => (
+              <div
+                key={i}
+                className="flex flex-wrap items-center gap-3 border-b border-[#f0ece2] pb-2 last:border-0"
+              >
+                <label className="flex w-[150px] items-center gap-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    checked={d.ativo}
+                    onChange={(e) => atualizarDia(i, { ativo: e.target.checked })}
+                  />
+                  {DIAS[i]}
+                </label>
+                <div
+                  className="flex items-center gap-2"
+                  style={{ opacity: d.ativo ? 1 : 0.4 }}
+                >
+                  <input
+                    type="time"
+                    value={d.inicio}
+                    disabled={!d.ativo}
+                    onChange={(e) => atualizarDia(i, { inicio: e.target.value })}
+                    className={campoHora}
+                  />
+                  <span className="text-[#999]">até</span>
+                  <input
+                    type="time"
+                    value={d.fim}
+                    disabled={!d.ativo}
+                    onChange={(e) => atualizarDia(i, { fim: e.target.value })}
+                    className={campoHora}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              onClick={salvarHorarios}
+              disabled={salvandoHorarios}
+              className="rounded-[9px] py-2.5 px-5 text-sm font-bold text-white disabled:opacity-50"
+              style={{ background: cor }}
+            >
+              {salvandoHorarios ? "Salvando..." : "Salvar horários"}
+            </button>
+            {horariosOk && (
+              <span className="text-sm font-medium text-[#2a8a4a]">
+                Horários salvos!
+              </span>
+            )}
+          </div>
+        </section>
+
+        {/* ---------- Agenda por dia ---------- */}
+        <section className="mt-6">
+          <h2 className="mb-3 font-display text-lg font-semibold">
+            Agenda
+          </h2>
+
+          {porDia.length === 0 ? (
+            <div className="rounded-[14px] border border-dashed border-[#d8d2c4] bg-white/50 p-8 text-center text-sm text-[#999]">
+              Nenhum agendamento ainda. Compartilhe seu link para os clientes
+              começarem a marcar.
+            </div>
+          ) : (
+            porDia.map(([data, lista]) => (
+              <div key={data} className="mb-5">
+                <h3 className="mb-2 text-sm font-medium text-[#888]">
+                  {dataPorExtenso(data)}
+                </h3>
+                <div className="space-y-2">
+                  {lista.map((a) => {
+                    const cancelado = a.status === "cancelado";
+                    return (
+                      <div
+                        key={a.id}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-[#e6e0d4] bg-white p-3.5"
+                        style={{ opacity: cancelado ? 0.6 : 1 }}
+                      >
+                        <div className="flex items-center gap-3.5">
+                          <div
+                            className="min-w-[52px] font-display text-lg font-semibold"
+                            style={{ color: cor }}
+                          >
+                            {hhmm(a.hora)}
+                          </div>
+                          <div>
+                            <div
+                              className="font-bold"
+                              style={{
+                                textDecoration: cancelado
+                                  ? "line-through"
+                                  : "none",
+                              }}
+                            >
+                              {a.cliente_nome}
+                            </div>
+                            <div className="text-[13px] text-[#888]">
+                              {a.servico} · {a.cliente_telefone}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            className="rounded-full px-2.5 py-1 text-xs font-bold"
+                            style={{
+                              background: cancelado ? "#fbe3e0" : "#e3f5e8",
+                              color: cancelado ? "#c0392b" : "#2a8a4a",
+                            }}
+                          >
+                            {a.status}
+                          </span>
+                          {!cancelado && (
+                            <button
+                              onClick={() => cancelar(a.id)}
+                              disabled={cancelandoId === a.id}
+                              className="rounded-[7px] border border-[#e6e0d4] bg-[#f4f1ea] px-3 py-1.5 text-[13px] font-medium text-[#c0392b] disabled:opacity-50"
+                            >
+                              {cancelandoId === a.id
+                                ? "Cancelando..."
+                                : "Cancelar"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
+          )}
+        </section>
+      </main>
+    </div>
   );
 }
