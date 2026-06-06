@@ -1,19 +1,7 @@
-import { type EmailOtpType } from "@supabase/supabase-js";
+import { type EmailOtpType, type SupabaseClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 
-/**
- * Destino dos links de e-mail do Supabase (confirmacao de cadastro e
- * recuperacao de senha). Valida o token_hash, cria a sessao em cookie e
- * redireciona para `next` (/profissional no cadastro, /redefinir-senha na
- * recuperacao). Veja o trecho de template de e-mail nas instrucoes.
- *
- * Aqui tambem criamos a linha em `profissionais` no primeiro acesso do
- * cadastro: o Supabase free tier nao deixa criar trigger no schema auth,
- * entao garantimos o perfil neste ponto — ja autenticado, a policy de RLS
- * (auth.uid() = id) permite o insert. So roda na confirmacao de cadastro,
- * nunca na recuperacao de senha.
- */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const token_hash = searchParams.get("token_hash");
@@ -23,13 +11,36 @@ export async function GET(request: NextRequest) {
     (type === "recovery" ? "/redefinir-senha" : "/profissional");
 
   if (token_hash && type) {
-    const supabase = await createClient();
+    // Cria a resposta de redirect ANTES de chamar verifyOtp para que os
+    // cookies de sessao sejam gravados direto nela. Em Route Handlers o
+    // NextResponse.redirect() cria uma resposta nova — se os cookies forem
+    // setados pelo cookies() do next/headers eles ficam em outra resposta e
+    // o navegador nunca os recebe. Este padrao e o correto para handlers.
+    const response = NextResponse.redirect(new URL(next, origin));
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options),
+            );
+          },
+        },
+      },
+    );
+
     const { error } = await supabase.auth.verifyOtp({ type, token_hash });
     if (!error) {
       if (type !== "recovery") {
         await garantirProfissional(supabase);
       }
-      return NextResponse.redirect(new URL(next, origin));
+      return response; // ja carrega os cookies de sessao
     }
   }
 
@@ -41,9 +52,7 @@ export async function GET(request: NextRequest) {
  * Cria a linha em `profissionais` a partir dos metadados do cadastro
  * (nome/nicho), se ainda nao existir. Idempotente: ignora se ja existe.
  */
-async function garantirProfissional(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-) {
+async function garantirProfissional(supabase: SupabaseClient) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
