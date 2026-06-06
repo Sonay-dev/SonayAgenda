@@ -41,9 +41,20 @@ const HORARIO_PADRAO: DiaConfig = {
   fim: "18:00",
 };
 
+const PASSO_MIN = 30; // grade de horarios de 30 em 30 minutos (igual a tela do cliente)
+
 // ---------- helpers ----------
 const hhmm = (t: string) => t.slice(0, 5);
 const hojeISO = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
+function paraMinutos(hhmmss: string): number {
+  const [h, m] = hhmmss.split(":").map(Number);
+  return h * 60 + m;
+}
+function paraHora(min: number): string {
+  const h = String(Math.floor(min / 60)).padStart(2, "0");
+  const m = String(min % 60).padStart(2, "0");
+  return `${h}:${m}:00`;
+}
 function addDias(iso: string, n: number): string {
   const d = new Date(`${iso}T00:00:00`);
   d.setDate(d.getDate() + n);
@@ -83,6 +94,19 @@ export default function ProfissionalPage() {
   const [horariosOk, setHorariosOk] = useState(false);
 
   const [copiado, setCopiado] = useState(false);
+
+  // ---------- Agendar para cliente (modal) ----------
+  const [modalAberto, setModalAberto] = useState(false);
+  const [agNome, setAgNome] = useState("");
+  const [agTelefone, setAgTelefone] = useState("");
+  const [agServico, setAgServico] = useState("");
+  const [agData, setAgData] = useState(hojeISO());
+  const [agHora, setAgHora] = useState("");
+  const [agOcupados, setAgOcupados] = useState<string[]>([]);
+  const [agEnviando, setAgEnviando] = useState(false);
+  const [agErro, setAgErro] = useState<string | null>(null);
+  const [agLink, setAgLink] = useState<string | null>(null);
+  const [agLinkCopiado, setAgLinkCopiado] = useState(false);
 
   const cor = prof ? corDoNicho(prof.nicho) : "#1a1a1a";
   const rotuloNicho = prof
@@ -186,6 +210,117 @@ export default function ProfissionalPage() {
     }
     return [...grupos.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [agendamentos]);
+
+  // ---------- Horarios ja ocupados na data escolhida no modal ----------
+  useEffect(() => {
+    if (!modalAberto || !prof || !agData) return;
+    (async () => {
+      const { data: occ, error } = await supabase.rpc("horarios_ocupados", {
+        p_profissional_id: prof.id,
+        p_data: agData,
+      });
+      if (!error) {
+        setAgOcupados(((occ as { hora: string }[]) ?? []).map((o) => o.hora));
+      }
+    })();
+  }, [modalAberto, prof, agData]);
+
+  // ---------- Grade de horarios do dia escolhido no modal ----------
+  const agGrade = useMemo(() => {
+    if (!agData) return [] as { hora: string; ocupado: boolean }[];
+    const diaSemana = new Date(`${agData}T00:00:00`).getDay(); // 0=domingo
+    const cfg = dias[diaSemana];
+    if (!cfg || !cfg.ativo) return [];
+    const ocupadosSet = new Set(agOcupados);
+    const ini = paraMinutos(cfg.inicio);
+    const fim = paraMinutos(cfg.fim);
+    const slots: { hora: string; ocupado: boolean }[] = [];
+    for (let m = ini; m + PASSO_MIN <= fim; m += PASSO_MIN) {
+      const slot = paraHora(m);
+      slots.push({ hora: slot, ocupado: ocupadosSet.has(slot) });
+    }
+    return slots;
+  }, [agData, dias, agOcupados]);
+
+  const agPodeConfirmar =
+    !!agServico &&
+    !!agHora &&
+    agNome.trim().length > 1 &&
+    agTelefone.trim().length > 7;
+
+  function abrirModalAgendar() {
+    setAgNome("");
+    setAgTelefone("");
+    setAgServico(servicos[0]?.nome ?? "");
+    setAgData(hojeISO());
+    setAgHora("");
+    setAgErro(null);
+    setAgLink(null);
+    setAgLinkCopiado(false);
+    setModalAberto(true);
+  }
+
+  // ---------- Confirmar agendamento feito pelo profissional ----------
+  async function agendarParaCliente() {
+    if (!prof || !agPodeConfirmar) return;
+    setAgErro(null);
+    setAgEnviando(true);
+    const { data, error } = await supabase.rpc("agendar", {
+      p_profissional_id: prof.id,
+      p_servico: agServico,
+      p_data: agData,
+      p_hora: agHora,
+      p_cliente_nome: agNome,
+      p_cliente_telefone: agTelefone,
+    });
+    setAgEnviando(false);
+    if (error) {
+      setAgErro(error.message);
+      // Pode ter ficado ocupado nesse meio tempo: recarrega a grade.
+      const { data: occ } = await supabase.rpc("horarios_ocupados", {
+        p_profissional_id: prof.id,
+        p_data: agData,
+      });
+      setAgOcupados(((occ as { hora: string }[]) ?? []).map((o) => o.hora));
+      setAgHora("");
+      return;
+    }
+    const linha = ((data as { id: string; token: string }[]) ?? [])[0];
+    if (linha) {
+      setAgLink(
+        `${window.location.origin}/cliente?id=${prof.id}&token=${linha.token}`,
+      );
+      // Mostra o novo agendamento na agenda sem recarregar a pagina.
+      setAgendamentos((prev) =>
+        [
+          ...prev,
+          {
+            id: linha.id,
+            cliente_nome: agNome.trim(),
+            cliente_telefone: agTelefone.trim(),
+            servico: agServico,
+            data: agData,
+            hora: agHora,
+            status: "confirmado" as const,
+          },
+        ].sort(
+          (a, b) =>
+            a.data.localeCompare(b.data) || a.hora.localeCompare(b.hora),
+        ),
+      );
+    }
+  }
+
+  async function copiarLinkAgendamento() {
+    if (!agLink) return;
+    try {
+      await navigator.clipboard.writeText(agLink);
+      setAgLinkCopiado(true);
+      setTimeout(() => setAgLinkCopiado(false), 2000);
+    } catch {
+      setAgErro("Não consegui copiar. Copie manualmente o link acima.");
+    }
+  }
 
   // ---------- Cancelar agendamento ----------
   async function cancelar(id: string) {
@@ -428,6 +563,20 @@ export default function ProfissionalPage() {
               {copiado ? "Copiado!" : "Copiar link"}
             </button>
           </div>
+
+          <div className="mt-4 border-t border-[#f0ece2] pt-4">
+            <p className="text-sm text-[#777]">
+              Ou marque você mesmo o horário do cliente e envie o link do
+              agendamento por WhatsApp.
+            </p>
+            <button
+              onClick={abrirModalAgendar}
+              className="mt-3 rounded-[9px] px-4 py-2.5 text-sm font-bold text-white"
+              style={{ background: cor }}
+            >
+              Agendar para cliente
+            </button>
+          </div>
         </section>
 
         {/* ---------- Serviços ---------- */}
@@ -651,6 +800,190 @@ export default function ProfissionalPage() {
           )}
         </section>
       </main>
+
+      {/* ---------- Modal: Agendar para cliente ---------- */}
+      {modalAberto && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:items-center"
+          onClick={() => setModalAberto(false)}
+        >
+          <div
+            className="my-auto w-full max-w-[460px] rounded-[14px] border border-[#e6e0d4] bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-lg font-semibold">
+                Agendar para cliente
+              </h2>
+              <button
+                onClick={() => setModalAberto(false)}
+                aria-label="Fechar"
+                className="rounded-[7px] px-2 py-1 text-xl leading-none text-[#999] hover:bg-[#f4f1ea]"
+              >
+                ×
+              </button>
+            </div>
+
+            {agErro && (
+              <div className="mt-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+                {agErro}
+              </div>
+            )}
+
+            {agLink ? (
+              /* -------- Sucesso: link gerado -------- */
+              <div className="mt-4">
+                <div className="rounded-[12px] border border-[#cfe9d6] bg-[#f0faf3] p-4 text-center">
+                  <div className="text-[34px]">✅</div>
+                  <p className="mt-1 font-medium text-[#2a8a4a]">
+                    Agendamento criado!
+                  </p>
+                  <p className="mt-1 text-sm text-[#666]">
+                    Copie o link abaixo e envie para o cliente no WhatsApp. Por
+                    ele o cliente vê, cancela ou remarca o horário.
+                  </p>
+                </div>
+                <code className="mt-3 block overflow-x-auto rounded-lg border border-[#e6e0d4] bg-[#fafaf7] px-3 py-2 text-sm text-[#555]">
+                  {agLink}
+                </code>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={copiarLinkAgendamento}
+                    className="flex-1 rounded-[9px] px-4 py-2.5 text-sm font-bold text-white"
+                    style={{ background: agLinkCopiado ? "#2a8a4a" : "#1a1a1a" }}
+                  >
+                    {agLinkCopiado ? "Copiado!" : "Copiar link"}
+                  </button>
+                  <button
+                    onClick={() => setModalAberto(false)}
+                    className="rounded-[9px] border border-[#e6e0d4] bg-white px-4 py-2.5 text-sm font-medium text-[#555]"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* -------- Formulario -------- */
+              <div className="mt-4">
+                {servicos.length === 0 ? (
+                  <p className="text-sm text-[#999]">
+                    Cadastre ao menos um serviço antes de agendar para um
+                    cliente.
+                  </p>
+                ) : (
+                  <>
+                    <label className="mb-1.5 block text-[13px] font-medium text-[#666]">
+                      Nome do cliente
+                    </label>
+                    <input
+                      value={agNome}
+                      onChange={(e) => setAgNome(e.target.value)}
+                      placeholder="Como o cliente se chama?"
+                      className="w-full rounded-[9px] border border-[#e6e0d4] bg-[#fafaf7] px-3.5 py-2.5 text-sm"
+                    />
+
+                    <label className="mb-1.5 mt-4 block text-[13px] font-medium text-[#666]">
+                      Telefone
+                    </label>
+                    <input
+                      value={agTelefone}
+                      onChange={(e) => setAgTelefone(e.target.value)}
+                      placeholder="(11) 99999-9999"
+                      inputMode="tel"
+                      className="w-full rounded-[9px] border border-[#e6e0d4] bg-[#fafaf7] px-3.5 py-2.5 text-sm"
+                    />
+
+                    <label className="mb-1.5 mt-4 block text-[13px] font-medium text-[#666]">
+                      Serviço
+                    </label>
+                    <select
+                      value={agServico}
+                      onChange={(e) => setAgServico(e.target.value)}
+                      className="w-full rounded-[9px] border border-[#e6e0d4] bg-[#fafaf7] px-3.5 py-2.5 text-sm"
+                    >
+                      {servicos.map((s) => (
+                        <option key={s.id} value={s.nome}>
+                          {s.nome} ({s.duracao_min} min)
+                        </option>
+                      ))}
+                    </select>
+
+                    <label className="mb-1.5 mt-4 block text-[13px] font-medium text-[#666]">
+                      Dia
+                    </label>
+                    <input
+                      type="date"
+                      min={hojeISO()}
+                      value={agData}
+                      onChange={(e) => {
+                        setAgData(e.target.value);
+                        setAgHora("");
+                      }}
+                      className="w-full rounded-[9px] border border-[#e6e0d4] bg-[#fafaf7] px-3.5 py-2.5 text-sm"
+                    />
+
+                    <label className="mb-1.5 mt-4 block text-[13px] font-medium text-[#666]">
+                      Horário disponível
+                    </label>
+                    {agGrade.length === 0 ? (
+                      <p className="mb-2 text-sm text-[#999]">
+                        Sem atendimento neste dia. Escolha outra data.
+                      </p>
+                    ) : (
+                      <div className="mb-2 grid grid-cols-4 gap-2">
+                        {agGrade.map(({ hora: h, ocupado }) => {
+                          const sel = agHora === h;
+                          return (
+                            <button
+                              key={h}
+                              disabled={ocupado}
+                              onClick={() => setAgHora(h)}
+                              className="rounded-lg border py-2.5 text-sm font-medium"
+                              style={{
+                                background: sel
+                                  ? cor
+                                  : ocupado
+                                    ? "#f0ece2"
+                                    : "#fff",
+                                color: sel
+                                  ? "#fff"
+                                  : ocupado
+                                    ? "#ccc"
+                                    : "#1a1a1a",
+                                borderColor: sel ? cor : "#e6e0d4",
+                                textDecoration: ocupado ? "line-through" : "none",
+                                cursor: ocupado ? "not-allowed" : "pointer",
+                              }}
+                            >
+                              {hhmm(h)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={agendarParaCliente}
+                      disabled={!agPodeConfirmar || agEnviando}
+                      className="mt-4 w-full rounded-[10px] py-3.5 text-[15px] font-bold text-white"
+                      style={{
+                        background:
+                          !agPodeConfirmar || agEnviando ? "#ddd" : "#1a1a1a",
+                        cursor:
+                          !agPodeConfirmar || agEnviando
+                            ? "not-allowed"
+                            : "pointer",
+                      }}
+                    >
+                      {agEnviando ? "Agendando..." : "Confirmar agendamento"}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

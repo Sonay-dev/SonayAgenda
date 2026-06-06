@@ -83,6 +83,32 @@ as $$
     and a.status = 'confirmado';
 $$;
 
+-- Buscar UM agendamento pelo token (o cliente abre o link e ve/gerencia o
+-- proprio horario). So devolve com o token certo, entao ninguem ve o de outro.
+create or replace function agendamento_publico(p_token uuid)
+returns table (
+  id              uuid,
+  profissional_id uuid,
+  prof_nome       text,
+  prof_nicho      nicho,
+  cliente_nome    text,
+  servico         text,
+  data            date,
+  hora            time,
+  status          text
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select a.id, a.profissional_id, p.nome, p.nicho,
+         a.cliente_nome, a.servico, a.data, a.hora, a.status::text
+  from agendamentos a
+  join profissionais p on p.id = a.profissional_id
+  where a.token = p_token;
+$$;
+
 -- ---------------------------------------------------------------------
 -- Escrita publica (marcar / cancelar / remarcar) - protegidas por token
 -- ---------------------------------------------------------------------
@@ -179,6 +205,7 @@ grant execute on function profissional_publico(uuid)                  to anon, a
 grant execute on function servicos_publico(uuid)                      to anon, authenticated;
 grant execute on function horarios_publico(uuid)                      to anon, authenticated;
 grant execute on function horarios_ocupados(uuid, date)               to anon, authenticated;
+grant execute on function agendamento_publico(uuid)                   to anon, authenticated;
 grant execute on function agendar(uuid, text, date, time, text, text) to anon, authenticated;
 grant execute on function cancelar_agendamento(uuid, uuid)            to anon, authenticated;
 grant execute on function remarcar_agendamento(uuid, uuid, date, time) to anon, authenticated;
