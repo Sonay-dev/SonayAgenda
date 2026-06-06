@@ -40,7 +40,9 @@
 - **/profissional** — Painel do profissional (agenda, serviços, horários, link)
 - **/admin** — Painel admin nas cores da marca Sonay (receita, suspender, remover)
 - **/cliente?id=** — Tela pública de agendamento via link
-- **/esqueci-senha** e **/redefinir-senha** — Recuperação de senha
+- **/cliente?id=&token=** — Tela do cliente para ver/cancelar/remarcar agendamento criado pelo profissional
+- **/esqueci-senha** e **/redefinir-senha** — Recuperação de senha (funciona em produção)
+- **/auth/confirm** — Route handler PKCE + token_hash para recuperação de senha
 
 ### Recursos:
 - PWA instalável no celular (ícones, manifest, service worker)
@@ -48,6 +50,9 @@
 - RLS no Supabase (cada profissional só vê os próprios dados)
 - Admin reconhecido pelo e-mail (sonaydev88@gmail.com)
 - Aviso na tela de login orientando clientes a usarem o link
+- Profissional pode criar agendamento para o cliente pelo painel e gerar link com token
+- Cliente abre o link e pode cancelar ou remarcar o horário sem login
+- Edição inline de serviços (nome e duração) no painel do profissional
 
 ---
 
@@ -60,7 +65,7 @@
 - **agendamentos:** id, profissional_id (FK), cliente_nome, cliente_telefone, servico, data, hora, status, token, criado_em
 
 ### Funções públicas (SECURITY DEFINER) criadas:
-profissionais_ativos(), profissional_publico(uuid), servicos_publico(uuid), horarios_publico(uuid), horarios_ocupados(uuid, date), agendar(...), cancelar_agendamento(uuid, uuid), remarcar_agendamento(uuid, uuid, date, time)
+profissionais_ativos(), profissional_publico(uuid), servicos_publico(uuid), horarios_publico(uuid), horarios_ocupados(uuid, date), agendamento_publico(uuid), agendar(...), cancelar_agendamento(uuid, uuid), remarcar_agendamento(uuid, uuid, date, time)
 
 ### Enum:
 - **nicho:** barbearia, salao, estetica, fisioterapia, personal
@@ -103,11 +108,11 @@ profissionais_ativos(), profissional_publico(uuid), servicos_publico(uuid), hora
 ---
 
 ## Próximos passos (pendentes)
-1. **Lembretes WhatsApp** — n8n + Evolution API lendo tabela agendamentos do Supabase (bot já está no Railway)
-2. **Domínio próprio** — agenda.sonay.dev na Vercel (DNS via Hostinger)
-3. **Editar serviço** — hoje só adiciona/remover, falta editar nome/duração inline
-4. **Landing page** — página de venda do produto para atrair profissionais
-5. **Recuperação de senha** — funciona em produção (HTTPS), não testada ainda
+1. **Domínio próprio** — agenda.sonay.dev na Vercel (DNS via Hostinger) — só configuração
+2. **Lembretes WhatsApp** — n8n + Evolution API lendo tabela agendamentos do Supabase (bot já está no Railway)
+3. **Landing page** — página de venda para atrair profissionais
+   - Decisão tomada: `/` vira landing, login vai para `/entrar`
+   - Seções: Hero → Como funciona (3 passos) → Para quem é (nichos) → Benefícios → Preço → CTA final
 
 ---
 
@@ -140,4 +145,4 @@ git push
 
 ---
 
-*Gerado em 05/06/2026 — cole este arquivo no início da próxima conversa.*
+*Atualizado em 06/06/2026 — retome com "retome de onde paramos".*
