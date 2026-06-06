@@ -86,6 +86,10 @@ export default function ProfissionalPage() {
   const [removendoServicoId, setRemovendoServicoId] = useState<string | null>(
     null,
   );
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [editNome, setEditNome] = useState("");
+  const [editDuracao, setEditDuracao] = useState(30);
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
 
   const [dias, setDias] = useState<DiaConfig[]>(
     DIAS.map(() => ({ ...HORARIO_PADRAO })),
@@ -437,6 +441,31 @@ export default function ProfissionalPage() {
     setServicos((prev) => prev.filter((s) => s.id !== id));
   }
 
+  async function salvarEdicao() {
+    if (!editandoId || !editNome.trim()) return;
+    setErro(null);
+    setSalvandoEdicao(true);
+    const { error } = await supabase
+      .from("servicos")
+      .update({ nome: editNome.trim(), duracao_min: editDuracao })
+      .eq("id", editandoId);
+    setSalvandoEdicao(false);
+    if (error) {
+      setErro(error.message);
+      return;
+    }
+    setServicos((prev) =>
+      prev
+        .map((s) =>
+          s.id === editandoId
+            ? { ...s, nome: editNome.trim(), duracao_min: editDuracao }
+            : s,
+        )
+        .sort((a, b) => a.nome.localeCompare(b.nome)),
+    );
+    setEditandoId(null);
+  }
+
   // ---------- Link público ----------
   async function copiarLink() {
     if (!prof) return;
@@ -593,26 +622,78 @@ export default function ProfissionalPage() {
                 Nenhum serviço cadastrado ainda. Adicione o primeiro abaixo.
               </p>
             ) : (
-              servicos.map((s) => (
-                <div
-                  key={s.id}
-                  className="flex items-center justify-between gap-3 rounded-[10px] border border-[#e6e0d4] bg-[#fafaf7] px-3.5 py-2.5"
-                >
-                  <div>
-                    <span className="font-medium">{s.nome}</span>
-                    <span className="ml-2 text-[13px] text-[#888]">
-                      {s.duracao_min} min
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => removerServico(s.id)}
-                    disabled={removendoServicoId === s.id}
-                    className="rounded-[7px] border border-[#e6e0d4] bg-white px-3 py-1.5 text-[13px] font-medium text-[#c0392b] disabled:opacity-50"
+              servicos.map((s) =>
+                editandoId === s.id ? (
+                  /* ---- linha de edicao inline ---- */
+                  <div
+                    key={s.id}
+                    className="flex flex-wrap items-center gap-2 rounded-[10px] border bg-[#fafaf7] px-3.5 py-2.5"
+                    style={{ borderColor: cor }}
                   >
-                    {removendoServicoId === s.id ? "Removendo..." : "Remover"}
-                  </button>
-                </div>
-              ))
+                    <input
+                      value={editNome}
+                      onChange={(e) => setEditNome(e.target.value)}
+                      className="min-w-0 flex-1 rounded-lg border border-[#e6e0d4] bg-white px-2.5 py-1.5 text-sm"
+                      autoFocus
+                    />
+                    <input
+                      type="number"
+                      min={5}
+                      step={5}
+                      value={editDuracao}
+                      onChange={(e) => setEditDuracao(Number(e.target.value))}
+                      className="w-[80px] rounded-lg border border-[#e6e0d4] bg-white px-2.5 py-1.5 text-sm"
+                    />
+                    <span className="text-[13px] text-[#888]">min</span>
+                    <button
+                      onClick={salvarEdicao}
+                      disabled={salvandoEdicao || !editNome.trim()}
+                      className="rounded-[7px] px-3 py-1.5 text-[13px] font-bold text-white disabled:opacity-50"
+                      style={{ background: cor }}
+                    >
+                      {salvandoEdicao ? "Salvando..." : "Salvar"}
+                    </button>
+                    <button
+                      onClick={() => setEditandoId(null)}
+                      className="rounded-[7px] border border-[#e6e0d4] bg-white px-3 py-1.5 text-[13px] font-medium text-[#555]"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  /* ---- linha normal ---- */
+                  <div
+                    key={s.id}
+                    className="flex items-center justify-between gap-3 rounded-[10px] border border-[#e6e0d4] bg-[#fafaf7] px-3.5 py-2.5"
+                  >
+                    <div>
+                      <span className="font-medium">{s.nome}</span>
+                      <span className="ml-2 text-[13px] text-[#888]">
+                        {s.duracao_min} min
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setEditandoId(s.id);
+                          setEditNome(s.nome);
+                          setEditDuracao(s.duracao_min);
+                        }}
+                        className="rounded-[7px] border border-[#e6e0d4] bg-white px-3 py-1.5 text-[13px] font-medium text-[#555]"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => removerServico(s.id)}
+                        disabled={removendoServicoId === s.id}
+                        className="rounded-[7px] border border-[#e6e0d4] bg-white px-3 py-1.5 text-[13px] font-medium text-[#c0392b] disabled:opacity-50"
+                      >
+                        {removendoServicoId === s.id ? "Removendo..." : "Remover"}
+                      </button>
+                    </div>
+                  </div>
+                ),
+              )
             )}
           </div>
 
