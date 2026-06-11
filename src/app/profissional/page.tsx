@@ -98,6 +98,7 @@ export default function ProfissionalPage() {
   const [horariosOk, setHorariosOk] = useState(false);
 
   const [copiado, setCopiado] = useState(false);
+  const [linkExpandido, setLinkExpandido] = useState(false);
 
   // ---------- Agendar para cliente (modal) ----------
   const [modalAberto, setModalAberto] = useState(false);
@@ -570,42 +571,54 @@ export default function ProfissionalPage() {
           ))}
         </section>
 
-        {/* ---------- Link público ---------- */}
-        <section className="mt-6 rounded-[14px] border border-[#e6e0d4] bg-white p-5">
-          <h2 className="font-display text-lg font-semibold">
-            Link para seus clientes
-          </h2>
-          <p className="mt-1 text-sm text-[#777]">
-            Envie este link para o cliente marcar horário — sem precisar de
-            login.
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <code className="flex-1 overflow-x-auto rounded-lg border border-[#e6e0d4] bg-[#fafaf7] px-3 py-2 text-sm text-[#555]">
-              {typeof window !== "undefined" ? window.location.origin : ""}
-              /cliente?id={prof?.id}
-            </code>
-            <button
-              onClick={copiarLink}
-              className="rounded-[9px] px-4 py-2 text-sm font-bold text-white"
-              style={{ background: copiado ? "#2a8a4a" : "#1a1a1a" }}
-            >
-              {copiado ? "Copiado!" : "Copiar link"}
-            </button>
-          </div>
+        {/* ---------- Link público (acordeão) ---------- */}
+        <section className="mt-6 rounded-[14px] border border-[#e6e0d4] bg-white">
+          <button
+            onClick={() => setLinkExpandido((v) => !v)}
+            className="flex w-full items-center justify-between px-5 py-4 text-left"
+          >
+            <h2 className="font-display text-lg font-semibold">
+              Link para seus clientes
+            </h2>
+            <span className="text-[#999] transition-transform duration-200" style={{ display: "inline-block", transform: linkExpandido ? "rotate(180deg)" : "rotate(0deg)" }}>
+              ▼
+            </span>
+          </button>
 
-          <div className="mt-4 border-t border-[#f0ece2] pt-4">
-            <p className="text-sm text-[#777]">
-              Ou marque você mesmo o horário do cliente e envie o link do
-              agendamento por WhatsApp.
-            </p>
-            <button
-              onClick={abrirModalAgendar}
-              className="mt-3 rounded-[9px] px-4 py-2.5 text-sm font-bold text-white"
-              style={{ background: cor }}
-            >
-              Agendar para cliente
-            </button>
-          </div>
+          {linkExpandido && (
+            <div className="border-t border-[#f0ece2] px-5 pb-5 pt-4">
+              <p className="text-sm text-[#777]">
+                Envie este link para o cliente marcar horário — sem precisar de login.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <code className="flex-1 overflow-x-auto rounded-lg border border-[#e6e0d4] bg-[#fafaf7] px-3 py-2 text-sm text-[#555]">
+                  {typeof window !== "undefined" ? window.location.origin : ""}
+                  /cliente?id={prof?.id}
+                </code>
+                <button
+                  onClick={copiarLink}
+                  className="rounded-[9px] px-4 py-2 text-sm font-bold text-white"
+                  style={{ background: copiado ? "#2a8a4a" : "#1a1a1a" }}
+                >
+                  {copiado ? "Copiado!" : "Copiar link"}
+                </button>
+              </div>
+
+              <div className="mt-4 border-t border-[#f0ece2] pt-4">
+                <p className="text-sm text-[#777]">
+                  Ou marque você mesmo o horário do cliente e envie o link do
+                  agendamento por WhatsApp.
+                </p>
+                <button
+                  onClick={abrirModalAgendar}
+                  className="mt-3 rounded-[9px] px-4 py-2.5 text-sm font-bold text-white"
+                  style={{ background: cor }}
+                >
+                  Agendar para cliente
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* ---------- Serviços ---------- */}
