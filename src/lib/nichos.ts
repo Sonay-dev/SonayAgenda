@@ -1,5 +1,3 @@
-// Nichos do AgendaSonay: rotulo + cor de destaque (prd.md secao 10).
-// As chaves precisam bater com o enum `nicho` do banco (supabase/schema.sql).
 export type Nicho =
   | "barbearia"
   | "salao"
@@ -7,21 +5,40 @@ export type Nicho =
   | "fisioterapia"
   | "personal";
 
-export const NICHOS: Record<Nicho, { cor: string; rotulo: string }> = {
-  barbearia: { cor: "#d4915d", rotulo: "Barbearia" }, // laranja
-  salao: { cor: "#b07bc9", rotulo: "Salão de Beleza" }, // roxo
-  estetica: { cor: "#c97b94", rotulo: "Estética" }, // rosa
-  fisioterapia: { cor: "#5bb3a3", rotulo: "Fisioterapia" }, // verde-água
-  personal: { cor: "#5d9bd4", rotulo: "Personal Trainer" }, // azul
+type CoresNicho = {
+  rotulo: string;
+  fundoEscuro: string;
+  destaque: string;
+  fundoClaro: string;
+  forte: string;
 };
 
-// Lista ordenada para montar os <select> de cadastro.
+export const NICHOS: Record<Nicho, CoresNicho> = {
+  barbearia:    { rotulo: "Barbearia",        fundoEscuro: "#1A1A1A", destaque: "#C9A96E", fundoClaro: "#F5F0E8", forte: "#8B6914" },
+  salao:        { rotulo: "Salão de Beleza",  fundoEscuro: "#1C1224", destaque: "#E8A0BF", fundoClaro: "#FAF5FF", forte: "#9D4E72" },
+  estetica:     { rotulo: "Estética",         fundoEscuro: "#0D1F1A", destaque: "#7EC8A4", fundoClaro: "#F2FAF6", forte: "#2E7D57" },
+  fisioterapia: { rotulo: "Fisioterapia",     fundoEscuro: "#0A1628", destaque: "#5BAFD6", fundoClaro: "#EFF7FB", forte: "#1A6E96" },
+  personal:     { rotulo: "Personal Trainer", fundoEscuro: "#1A1000", destaque: "#F5A623", fundoClaro: "#FFFBF0", forte: "#C47D0A" },
+};
+
 export const NICHOS_LISTA = (Object.keys(NICHOS) as Nicho[]).map((valor) => ({
   valor,
   ...NICHOS[valor],
 }));
 
-// Cor de fallback caso venha um nicho novo ainda sem cor definida.
+const CORES_FALLBACK: CoresNicho = {
+  rotulo: "",
+  fundoEscuro: "#1a1a1a",
+  destaque: "#4f46e5",
+  fundoClaro: "#f4f1ea",
+  forte: "#4f46e5",
+};
+
+export function coresDoNicho(nicho: string): CoresNicho {
+  return NICHOS[nicho as Nicho] ?? CORES_FALLBACK;
+}
+
+// Mantido para compatibilidade (admin usa só esta função).
 export function corDoNicho(nicho: string): string {
-  return NICHOS[nicho as Nicho]?.cor ?? "#1a1a1a";
+  return coresDoNicho(nicho).destaque;
 }

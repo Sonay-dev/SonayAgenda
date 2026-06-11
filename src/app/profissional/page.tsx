@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { corDoNicho, NICHOS, type Nicho } from "@/lib/nichos";
+import { coresDoNicho, NICHOS, type Nicho } from "@/lib/nichos";
 
 // ---------- Tipos das tabelas (RLS garante: só os próprios dados) ----------
 type Profissional = { id: string; nome: string; nicho: string };
@@ -113,7 +113,7 @@ export default function ProfissionalPage() {
   const [agLink, setAgLink] = useState<string | null>(null);
   const [agLinkCopiado, setAgLinkCopiado] = useState(false);
 
-  const cor = prof ? corDoNicho(prof.nicho) : "#1a1a1a";
+  const { fundoEscuro, destaque, forte } = coresDoNicho(prof?.nicho ?? "");
   const rotuloNicho = prof
     ? (NICHOS[prof.nicho as Nicho]?.rotulo ?? prof.nicho)
     : "";
@@ -517,7 +517,7 @@ export default function ProfissionalPage() {
   return (
     <div className="min-h-screen bg-[#f4f1ea] text-[#1a1a1a]">
       {/* ---------- Cabeçalho ---------- */}
-      <header className="bg-[#1a1a1a] text-[#f4f1ea]">
+      <header className="text-[#f4f1ea]" style={{ background: fundoEscuro }}>
         <div className="mx-auto flex max-w-[1000px] items-center justify-between gap-3 px-5 py-4">
           <div>
             <div className="flex items-center gap-2.5">
@@ -526,7 +526,7 @@ export default function ProfissionalPage() {
               </h1>
               <span
                 className="rounded-full px-2.5 py-0.5 text-xs font-bold"
-                style={{ background: cor + "33", color: "#fff" }}
+                style={{ background: destaque + "33", color: "#fff" }}
               >
                 {rotuloNicho}
               </span>
@@ -563,7 +563,7 @@ export default function ProfissionalPage() {
               <div className="text-xs text-[#999]">{c.rotulo}</div>
               <div
                 className="mt-1 font-display text-3xl font-bold"
-                style={{ color: cor }}
+                style={{ color: destaque }}
               >
                 {c.valor}
               </div>
@@ -612,7 +612,7 @@ export default function ProfissionalPage() {
                 <button
                   onClick={abrirModalAgendar}
                   className="mt-3 rounded-[9px] px-4 py-2.5 text-sm font-bold text-white"
-                  style={{ background: cor }}
+                  style={{ background: forte }}
                 >
                   Agendar para cliente
                 </button>
@@ -641,7 +641,7 @@ export default function ProfissionalPage() {
                   <div
                     key={s.id}
                     className="flex flex-wrap items-center gap-2 rounded-[10px] border bg-[#fafaf7] px-3.5 py-2.5"
-                    style={{ borderColor: cor }}
+                    style={{ borderColor: forte }}
                   >
                     <input
                       value={editNome}
@@ -662,7 +662,7 @@ export default function ProfissionalPage() {
                       onClick={salvarEdicao}
                       disabled={salvandoEdicao || !editNome.trim()}
                       className="rounded-[7px] px-3 py-1.5 text-[13px] font-bold text-white disabled:opacity-50"
-                      style={{ background: cor }}
+                      style={{ background: forte }}
                     >
                       {salvandoEdicao ? "Salvando..." : "Salvar"}
                     </button>
@@ -743,7 +743,7 @@ export default function ProfissionalPage() {
               type="submit"
               disabled={salvandoServico}
               className="rounded-[9px] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-              style={{ background: cor }}
+              style={{ background: forte }}
             >
               {salvandoServico ? "Adicionando..." : "Adicionar"}
             </button>
@@ -802,7 +802,7 @@ export default function ProfissionalPage() {
               onClick={salvarHorarios}
               disabled={salvandoHorarios}
               className="rounded-[9px] py-2.5 px-5 text-sm font-bold text-white disabled:opacity-50"
-              style={{ background: cor }}
+              style={{ background: forte }}
             >
               {salvandoHorarios ? "Salvando..." : "Salvar horários"}
             </button>
@@ -843,7 +843,7 @@ export default function ProfissionalPage() {
                         <div className="flex items-center gap-3.5">
                           <div
                             className="min-w-[52px] font-display text-lg font-semibold"
-                            style={{ color: cor }}
+                            style={{ color: destaque }}
                           >
                             {hhmm(a.hora)}
                           </div>
@@ -1035,7 +1035,7 @@ export default function ProfissionalPage() {
                               className="rounded-lg border py-2.5 text-sm font-medium"
                               style={{
                                 background: sel
-                                  ? cor
+                                  ? forte
                                   : ocupado
                                     ? "#f0ece2"
                                     : "#fff",
@@ -1044,7 +1044,7 @@ export default function ProfissionalPage() {
                                   : ocupado
                                     ? "#ccc"
                                     : "#1a1a1a",
-                                borderColor: sel ? cor : "#e6e0d4",
+                                borderColor: sel ? forte : "#e6e0d4",
                                 textDecoration: ocupado ? "line-through" : "none",
                                 cursor: ocupado ? "not-allowed" : "pointer",
                               }}

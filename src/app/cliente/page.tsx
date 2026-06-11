@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { corDoNicho, NICHOS, type Nicho } from "@/lib/nichos";
+import { coresDoNicho, NICHOS, type Nicho } from "@/lib/nichos";
 
 // ---------- Tipos dos retornos das funcoes publicas do banco ----------
 type Profissional = { id: string; nome: string; nicho: string };
@@ -41,9 +41,9 @@ function rotuloNicho(nicho: string): string {
 }
 
 // Cabecalho da marca, reutilizado em todos os estados da tela.
-function Cabecalho() {
+function Cabecalho({ fundoEscuro = "#1a1a1a" }: { fundoEscuro?: string }) {
   return (
-    <header className="bg-[#1a1a1a] text-[#f4f1ea]">
+    <header className="text-[#f4f1ea]" style={{ background: fundoEscuro }}>
       <div className="mx-auto flex max-w-[1000px] items-center gap-2.5 px-5 py-3.5">
         <span
           className="flex h-[30px] w-[30px] items-center justify-center rounded-lg font-display font-bold text-white"
@@ -100,7 +100,7 @@ function ClienteAgendamento() {
   const [cancelando, setCancelando] = useState(false);
   const [cancelErro, setCancelErro] = useState<string | null>(null);
 
-  const cor = prof ? corDoNicho(prof.nicho) : "#1a1a1a";
+  const { fundoEscuro, destaque, fundoClaro, forte } = coresDoNicho(prof?.nicho ?? "");
 
   // ---------- Carregar o negocio do link (so no modo agendamento) ----------
   useEffect(() => {
@@ -362,7 +362,7 @@ function ClienteAgendamento() {
       );
     }
 
-    const corToken = corDoNicho(agToken.prof_nicho);
+    const { fundoEscuro: fundoToken, destaque: destaqueToken, fundoClaro: fundoClaroToken, forte: forteToken } = coresDoNicho(agToken.prof_nicho);
     const confirmado = agToken.status === "confirmado";
     const dataFormatada = new Date(
       `${agToken.data}T00:00:00`,
@@ -374,8 +374,8 @@ function ClienteAgendamento() {
     });
 
     return (
-      <>
-        <Cabecalho />
+      <div className="min-h-screen" style={{ background: fundoClaroToken }}>
+        <Cabecalho fundoEscuro={fundoToken} />
         <main className="mx-auto w-full max-w-[1000px] flex-1 px-5 py-7">
           <div className="card-fade mx-auto max-w-[460px]">
             <p className="mb-5 text-center text-[13px] uppercase tracking-wider text-[#999]">
@@ -389,7 +389,7 @@ function ClienteAgendamento() {
                 </h2>
                 <div
                   className="mt-1.5 inline-block rounded-full px-2.5 py-1 text-xs font-bold"
-                  style={{ background: corToken + "22", color: corToken }}
+                  style={{ background: destaqueToken + "22", color: destaqueToken }}
                 >
                   {rotuloNicho(agToken.prof_nicho)}
                 </div>
@@ -446,7 +446,7 @@ function ClienteAgendamento() {
                       setRemErro(null);
                     }}
                     className="w-full rounded-[10px] py-3 text-[15px] font-bold text-white"
-                    style={{ background: corToken }}
+                    style={{ background: forteToken }}
                   >
                     Remarcar horário
                   </button>
@@ -509,7 +509,7 @@ function ClienteAgendamento() {
                                 className="rounded-lg border py-2.5 text-sm font-medium"
                                 style={{
                                   background: sel
-                                    ? corToken
+                                    ? forteToken
                                     : ocupado
                                       ? "#f0ece2"
                                       : "#fff",
@@ -518,7 +518,7 @@ function ClienteAgendamento() {
                                     : ocupado
                                       ? "#ccc"
                                       : "#1a1a1a",
-                                  borderColor: sel ? corToken : "#e6e0d4",
+                                  borderColor: sel ? forteToken : "#e6e0d4",
                                   textDecoration: ocupado
                                     ? "line-through"
                                     : "none",
@@ -567,7 +567,7 @@ function ClienteAgendamento() {
             </div>
           </div>
         </main>
-      </>
+      </div>
     );
   }
 
@@ -601,8 +601,8 @@ function ClienteAgendamento() {
   }
 
   return (
-    <>
-      <Cabecalho />
+    <div className="min-h-screen" style={{ background: fundoClaro }}>
+      <Cabecalho fundoEscuro={fundoEscuro} />
       <main className="mx-auto w-full max-w-[1000px] flex-1 px-5 py-7">
         {erro && (
           <div className="mx-auto mb-5 max-w-[460px] rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -650,7 +650,7 @@ function ClienteAgendamento() {
                 </h2>
                 <div
                   className="mt-1.5 inline-block rounded-full px-2.5 py-1 text-xs font-bold"
-                  style={{ background: cor + "22", color: cor }}
+                  style={{ background: destaque + "22", color: destaque }}
                 >
                   {prof ? rotuloNicho(prof.nicho) : ""}
                 </div>
@@ -735,9 +735,9 @@ function ClienteAgendamento() {
                         onClick={() => setHora(h)}
                         className="rounded-lg border py-2.5 text-sm font-medium"
                         style={{
-                          background: sel ? cor : ocupado ? "#f0ece2" : "#fff",
+                          background: sel ? forte : ocupado ? "#f0ece2" : "#fff",
                           color: sel ? "#fff" : ocupado ? "#ccc" : "#1a1a1a",
-                          borderColor: sel ? cor : "#e6e0d4",
+                          borderColor: sel ? forte : "#e6e0d4",
                           textDecoration: ocupado ? "line-through" : "none",
                           cursor: ocupado ? "not-allowed" : "pointer",
                         }}
@@ -765,7 +765,7 @@ function ClienteAgendamento() {
           </div>
         )}
       </main>
-    </>
+    </div>
   );
 }
 
