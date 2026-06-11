@@ -15,6 +15,7 @@ function LoginForm() {
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [entrando, setEntrando] = useState(false);
+  const [lembrar, setLembrar] = useState(true);
 
   // Mensagem quando o link de confirmacao/recuperacao falha (/?erro=confirma).
   const erroUrl =
@@ -41,6 +42,12 @@ function LoginForm() {
             : error.message,
       );
       return;
+    }
+    // Registra preferência de sessão
+    localStorage.setItem("sonay-lembrar", String(lembrar));
+    if (!lembrar) {
+      // sessionStorage é apagado quando o browser fecha — garante logout ao reabrir
+      sessionStorage.setItem("sonay-sessao", "ativa");
     }
     router.replace(rotaAposLogin(data.user?.email));
   }
@@ -88,7 +95,16 @@ function LoginForm() {
             placeholder="Sua senha"
           />
 
-          <div className="mt-2 text-right">
+          <div className="mt-3 flex items-center justify-between">
+            <label className="flex cursor-pointer items-center gap-2 select-none">
+              <input
+                type="checkbox"
+                checked={lembrar}
+                onChange={(e) => setLembrar(e.target.checked)}
+                className="h-4 w-4 accent-[#15131f]"
+              />
+              <span className="text-[13px] text-[#666]">Continuar conectado</span>
+            </label>
             <Link
               href="/esqueci-senha"
               className="text-[13px] text-[#15131f] underline opacity-70 hover:opacity-100"

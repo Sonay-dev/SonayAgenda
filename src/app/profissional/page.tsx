@@ -153,8 +153,20 @@ export default function ProfissionalPage() {
   // ---------- Carregar dados do profissional logado ----------
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace("/"); return; }
+      // getSession() auto-renova o token se expirado (getUser() não renova).
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { router.replace("/"); return; }
+
+      // Se "Continuar conectado" estava desmarcado, sessionStorage é apagado
+      // quando o browser fecha — usamos isso para forçar logout na reabertura.
+      const lembrar = localStorage.getItem("sonay-lembrar");
+      if (lembrar === "false" && !sessionStorage.getItem("sonay-sessao")) {
+        await supabase.auth.signOut();
+        router.replace("/");
+        return;
+      }
+
+      const user = session.user;
 
       const { data: p, error: erroProf } = await supabase
         .from("profissionais")
