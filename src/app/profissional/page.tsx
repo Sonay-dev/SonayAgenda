@@ -89,6 +89,8 @@ export default function ProfissionalPage() {
 
   const [copiado, setCopiado] = useState(false);
   const [linkExpandido, setLinkExpandido] = useState(false);
+  const [servicosExpandido, setServicosExpandido] = useState(false);
+  const [horariosExpandido, setHorariosExpandido] = useState(false);
   const [modoEscuro, setModoEscuro] = useState(false);
 
   // ---------- Agendar para cliente (modal) ----------
@@ -543,11 +545,32 @@ export default function ProfissionalPage() {
 
         {/* ---------- Serviços ---------- */}
         <section
-          className="mt-6 rounded-[14px] p-5"
+          className="mt-6 rounded-[14px]"
           style={{ background: tema.cardBg, border: `1px solid ${tema.cardBorder}` }}
         >
-          <h2 className="font-display text-lg font-semibold">Serviços</h2>
-          <p className="mt-1 text-sm" style={{ color: tema.textoSec }}>
+          <button
+            onClick={() => setServicosExpandido((v) => !v)}
+            className="flex w-full items-center justify-between px-5 py-4 text-left"
+          >
+            <h2 className="font-display text-lg font-semibold">
+              Serviços
+              {servicos.length > 0 && (
+                <span className="ml-2 text-sm font-normal" style={{ color: tema.textoMuto }}>
+                  ({servicos.length})
+                </span>
+              )}
+            </h2>
+            <span
+              className="transition-transform duration-200"
+              style={{ display: "inline-block", color: tema.textoMuto, transform: servicosExpandido ? "rotate(180deg)" : "rotate(0deg)" }}
+            >
+              ▼
+            </span>
+          </button>
+
+          {servicosExpandido && (
+          <div className="px-5 pb-5" style={{ borderTop: `1px solid ${tema.separador}` }}>
+          <p className="mt-4 text-sm" style={{ color: tema.textoSec }}>
             Cadastre os serviços que o cliente pode escolher ao marcar horário.
           </p>
 
@@ -672,15 +695,31 @@ export default function ProfissionalPage() {
               {salvandoServico ? "Adicionando..." : "Adicionar"}
             </button>
           </form>
+          </div>
+          )}
         </section>
 
         {/* ---------- Horários de atendimento ---------- */}
         <section
-          className="mt-6 rounded-[14px] p-5"
+          className="mt-6 rounded-[14px]"
           style={{ background: tema.cardBg, border: `1px solid ${tema.cardBorder}` }}
         >
-          <h2 className="font-display text-lg font-semibold">Horários de atendimento</h2>
-          <p className="mt-1 text-sm" style={{ color: tema.textoSec }}>
+          <button
+            onClick={() => setHorariosExpandido((v) => !v)}
+            className="flex w-full items-center justify-between px-5 py-4 text-left"
+          >
+            <h2 className="font-display text-lg font-semibold">Horários de atendimento</h2>
+            <span
+              className="transition-transform duration-200"
+              style={{ display: "inline-block", color: tema.textoMuto, transform: horariosExpandido ? "rotate(180deg)" : "rotate(0deg)" }}
+            >
+              ▼
+            </span>
+          </button>
+
+          {horariosExpandido && (
+          <div className="px-5 pb-5" style={{ borderTop: `1px solid ${tema.separador}` }}>
+          <p className="mt-4 text-sm" style={{ color: tema.textoSec }}>
             Marque os dias que você atende e o horário de cada um.
           </p>
 
@@ -735,6 +774,8 @@ export default function ProfissionalPage() {
               <span className="text-sm font-medium text-[#2a8a4a]">Horários salvos!</span>
             )}
           </div>
+          </div>
+          )}
         </section>
 
         {/* ---------- Agenda por dia ---------- */}
