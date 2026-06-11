@@ -53,6 +53,10 @@
 - Profissional pode criar agendamento para o cliente pelo painel e gerar link com token
 - Cliente abre o link e pode cancelar ou remarcar o horário sem login
 - Edição inline de serviços (nome e duração) no painel do profissional
+- Toggle ☀️/🌙 de modo claro/escuro em /profissional e /cliente (preferência salva no localStorage)
+- Paletas de cores individuais por nicho: fundoEscuro, cardEscuro, destaque, fundoClaro, forte (definidas em src/lib/nichos.ts)
+- Seções "Link para seus clientes", "Serviços" e "Horários de atendimento" recolhidas em acordeão no painel — só a Agenda fica visível por padrão
+- Sessão do profissional persiste automaticamente via src/proxy.ts (Next.js 16 — renova o token Supabase a cada requisição)
 
 ---
 
@@ -75,10 +79,17 @@ profissionais_ativos(), profissional_publico(uuid), servicos_publico(uuid), hora
 
 ## Identidade visual da marca
 - **Ícone:** folhinha de agenda com letra S + ponto coral
-- **Cores:** fundo #15131f (escuro), gradiente #4f46e5→#7c3aed (índigo/roxo), âmbar #fbbf24 (argolas), coral #fb7185 (ponto)
-- **Telas internas:** fundo creme #f4f1ea, cards brancos, cor de destaque varia por nicho
-- **Nichos e cores:** barbearia laranja (#d4915d), estética rosa (#c97b94), personal azul (#5d9bd4)
+- **Cores da marca:** fundo #15131f (escuro), gradiente #4f46e5→#7c3aed (índigo/roxo), âmbar #fbbf24 (argolas), coral #fb7185 (ponto)
 - **Arquivos de logo gerados:** icon-192.png, icon-512.png, icon-maskable-512.png, apple-touch-icon-180.png, favicon-32.png, splash-1024.png
+
+### Paletas por nicho (src/lib/nichos.ts)
+| Nicho | fundoEscuro | cardEscuro | destaque | fundoClaro | forte |
+|---|---|---|---|---|---|
+| barbearia | #1A1A1A | #2E2E2E | #C9A96E | #F5F0E8 | #8B6914 |
+| salao | #1C1224 | #302638 | #E8A0BF | #FAF5FF | #9D4E72 |
+| estetica | #0D1F1A | #21332E | #7EC8A4 | #F2FAF6 | #2E7D57 |
+| fisioterapia | #0A1628 | #1E2A3C | #5BAFD6 | #EFF7FB | #1A6E96 |
+| personal | #1A1000 | #2E2414 | #F5A623 | #FFFBF0 | #C47D0A |
 
 ---
 
@@ -142,7 +153,9 @@ git push
 - `supabase/auth_setup.sql` — configuração de autenticação
 - `docs/checklist-producao.md` — checklist de testes em produção
 - `.env.local` — chaves do Supabase (NÃO vai pro GitHub)
+- `src/proxy.ts` — renova sessão Supabase a cada requisição (Next.js 16, substitui middleware.ts)
+- `src/lib/nichos.ts` — paletas de cores por nicho (5 propriedades: fundoEscuro, cardEscuro, destaque, fundoClaro, forte)
 
 ---
 
-*Atualizado em 06/06/2026 — retome com "retome de onde paramos".*
+*Atualizado em 10/06/2026 — retome com "retome de onde paramos".*
