@@ -33,19 +33,13 @@ const DIAS = [
   "Sábado",
 ];
 
-// Estado editável de uma janela de atendimento (1 faixa por dia, no MVP).
 type DiaConfig = { ativo: boolean; inicio: string; fim: string };
-const HORARIO_PADRAO: DiaConfig = {
-  ativo: false,
-  inicio: "09:00",
-  fim: "18:00",
-};
-
-const PASSO_MIN = 30; // grade de horarios de 30 em 30 minutos (igual a tela do cliente)
+const HORARIO_PADRAO: DiaConfig = { ativo: false, inicio: "09:00", fim: "18:00" };
+const PASSO_MIN = 30;
 
 // ---------- helpers ----------
 const hhmm = (t: string) => t.slice(0, 5);
-const hojeISO = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
+const hojeISO = () => new Date().toLocaleDateString("en-CA");
 function paraMinutos(hhmmss: string): number {
   const [h, m] = hhmmss.split(":").map(Number);
   return h * 60 + m;
@@ -83,22 +77,19 @@ export default function ProfissionalPage() {
   const [novoNome, setNovoNome] = useState("");
   const [novaDuracao, setNovaDuracao] = useState(30);
   const [salvandoServico, setSalvandoServico] = useState(false);
-  const [removendoServicoId, setRemovendoServicoId] = useState<string | null>(
-    null,
-  );
+  const [removendoServicoId, setRemovendoServicoId] = useState<string | null>(null);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [editNome, setEditNome] = useState("");
   const [editDuracao, setEditDuracao] = useState(30);
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
 
-  const [dias, setDias] = useState<DiaConfig[]>(
-    DIAS.map(() => ({ ...HORARIO_PADRAO })),
-  );
+  const [dias, setDias] = useState<DiaConfig[]>(DIAS.map(() => ({ ...HORARIO_PADRAO })));
   const [salvandoHorarios, setSalvandoHorarios] = useState(false);
   const [horariosOk, setHorariosOk] = useState(false);
 
   const [copiado, setCopiado] = useState(false);
   const [linkExpandido, setLinkExpandido] = useState(false);
+  const [modoEscuro, setModoEscuro] = useState(false);
 
   // ---------- Agendar para cliente (modal) ----------
   const [modalAberto, setModalAberto] = useState(false);
@@ -113,57 +104,72 @@ export default function ProfissionalPage() {
   const [agLink, setAgLink] = useState<string | null>(null);
   const [agLinkCopiado, setAgLinkCopiado] = useState(false);
 
-  const { fundoEscuro, destaque, forte } = coresDoNicho(prof?.nicho ?? "");
-  const rotuloNicho = prof
-    ? (NICHOS[prof.nicho as Nicho]?.rotulo ?? prof.nicho)
-    : "";
+  // ---------- Persistir preferência de tema ----------
+  useEffect(() => {
+    const saved = localStorage.getItem("sonay-modo-escuro");
+    if (saved === "true") setModoEscuro(true);
+  }, []);
+  useEffect(() => {
+    localStorage.setItem("sonay-modo-escuro", String(modoEscuro));
+  }, [modoEscuro]);
+
+  const { fundoEscuro, cardEscuro, destaque, forte } = coresDoNicho(prof?.nicho ?? "");
+  const rotuloNicho = prof ? (NICHOS[prof.nicho as Nicho]?.rotulo ?? prof.nicho) : "";
+
+  const tema = useMemo(() => modoEscuro ? {
+    pageBg: fundoEscuro,
+    cardBg: cardEscuro,
+    cardBorder: "rgba(255,255,255,0.1)",
+    inputBg: "rgba(255,255,255,0.06)",
+    inputBorder: "rgba(255,255,255,0.15)",
+    texto: "#f4f1ea",
+    textoSec: "rgba(244,241,234,0.6)",
+    textoMuto: "rgba(244,241,234,0.4)",
+    separador: "rgba(255,255,255,0.08)",
+    listItemBg: "rgba(255,255,255,0.04)",
+    cancelBtnBg: "rgba(255,255,255,0.08)",
+    slotBg: "rgba(255,255,255,0.08)",
+    slotOcupBg: "rgba(255,255,255,0.03)",
+    slotOcupColor: "rgba(244,241,234,0.25)",
+  } : {
+    pageBg: "#f4f1ea",
+    cardBg: "#ffffff",
+    cardBorder: "#e6e0d4",
+    inputBg: "#fafaf7",
+    inputBorder: "#e6e0d4",
+    texto: "#1a1a1a",
+    textoSec: "#777",
+    textoMuto: "#999",
+    separador: "#f0ece2",
+    listItemBg: "#fafaf7",
+    cancelBtnBg: "#f4f1ea",
+    slotBg: "#fff",
+    slotOcupBg: "#f0ece2",
+    slotOcupColor: "#ccc",
+  }, [modoEscuro, fundoEscuro, cardEscuro]);
 
   // ---------- Carregar dados do profissional logado ----------
   useEffect(() => {
-    // IIFE: os setState ocorrem só depois do await (nao sincronos no efeito).
     (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        router.replace("/");
-        return;
-      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.replace("/"); return; }
 
-      // Perfil (RLS: profissional_le_proprio)
       const { data: p, error: erroProf } = await supabase
         .from("profissionais")
         .select("id, nome, nicho")
         .eq("id", user.id)
         .maybeSingle();
-      if (erroProf) {
-        setErro(erroProf.message);
-        setCarregando(false);
-        return;
-      }
-      if (!p) {
-        setSemPerfil(true);
-        setCarregando(false);
-        return;
-      }
+      if (erroProf) { setErro(erroProf.message); setCarregando(false); return; }
+      if (!p) { setSemPerfil(true); setCarregando(false); return; }
       setProf(p as Profissional);
 
-      // Agendamentos + horários + serviços (RLS já filtra para os próprios)
       const [ags, hrs, srv] = await Promise.all([
-        supabase
-          .from("agendamentos")
-          .select(
-            "id, cliente_nome, cliente_telefone, servico, data, hora, status",
-          )
+        supabase.from("agendamentos")
+          .select("id, cliente_nome, cliente_telefone, servico, data, hora, status")
           .order("data", { ascending: true })
           .order("hora", { ascending: true }),
-        supabase
-          .from("horarios_disponiveis")
-          .select("dia_semana, hora_inicio, hora_fim"),
-        supabase
-          .from("servicos")
-          .select("id, nome, duracao_min")
-          .order("nome", { ascending: true }),
+        supabase.from("horarios_disponiveis").select("dia_semana, hora_inicio, hora_fim"),
+        supabase.from("servicos").select("id, nome, duracao_min").order("nome", { ascending: true }),
       ]);
 
       if (ags.error) setErro(ags.error.message);
@@ -175,16 +181,11 @@ export default function ProfissionalPage() {
         const base = DIAS.map(() => ({ ...HORARIO_PADRAO }));
         for (const h of hrs.data as LinhaHorario[]) {
           if (h.dia_semana >= 0 && h.dia_semana <= 6) {
-            base[h.dia_semana] = {
-              ativo: true,
-              inicio: hhmm(h.hora_inicio),
-              fim: hhmm(h.hora_fim),
-            };
+            base[h.dia_semana] = { ativo: true, inicio: hhmm(h.hora_inicio), fim: hhmm(h.hora_fim) };
           }
         }
         setDias(base);
       }
-
       setCarregando(false);
     })();
   }, [router]);
@@ -198,14 +199,11 @@ export default function ProfissionalPage() {
     const confirmados = agendamentos.filter((a) => a.status === "confirmado");
     return {
       hoje: confirmados.filter((a) => a.data === hoje).length,
-      semana: confirmados.filter(
-        (a) => a.data >= inicioSemana && a.data <= fimSemana,
-      ).length,
+      semana: confirmados.filter((a) => a.data >= inicioSemana && a.data <= fimSemana).length,
       total: confirmados.length,
     };
   }, [agendamentos]);
 
-  // ---------- Agenda agrupada por dia ----------
   const porDia = useMemo(() => {
     const grupos = new Map<string, Agendamento[]>();
     for (const a of agendamentos) {
@@ -216,7 +214,6 @@ export default function ProfissionalPage() {
     return [...grupos.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [agendamentos]);
 
-  // ---------- Horarios ja ocupados na data escolhida no modal ----------
   useEffect(() => {
     if (!modalAberto || !prof || !agData) return;
     (async () => {
@@ -224,16 +221,13 @@ export default function ProfissionalPage() {
         p_profissional_id: prof.id,
         p_data: agData,
       });
-      if (!error) {
-        setAgOcupados(((occ as { hora: string }[]) ?? []).map((o) => o.hora));
-      }
+      if (!error) setAgOcupados(((occ as { hora: string }[]) ?? []).map((o) => o.hora));
     })();
   }, [modalAberto, prof, agData]);
 
-  // ---------- Grade de horarios do dia escolhido no modal ----------
   const agGrade = useMemo(() => {
     if (!agData) return [] as { hora: string; ocupado: boolean }[];
-    const diaSemana = new Date(`${agData}T00:00:00`).getDay(); // 0=domingo
+    const diaSemana = new Date(`${agData}T00:00:00`).getDay();
     const cfg = dias[diaSemana];
     if (!cfg || !cfg.ativo) return [];
     const ocupadosSet = new Set(agOcupados);
@@ -248,28 +242,19 @@ export default function ProfissionalPage() {
   }, [agData, dias, agOcupados]);
 
   const agPodeConfirmar =
-    !!agServico &&
-    !!agHora &&
-    agNome.trim().length > 1 &&
-    agTelefone.trim().length > 7;
+    !!agServico && !!agHora && agNome.trim().length > 1 && agTelefone.trim().length > 7;
 
   function abrirModalAgendar() {
-    setAgNome("");
-    setAgTelefone("");
+    setAgNome(""); setAgTelefone("");
     setAgServico(servicos[0]?.nome ?? "");
-    setAgData(hojeISO());
-    setAgHora("");
-    setAgErro(null);
-    setAgLink(null);
-    setAgLinkCopiado(false);
+    setAgData(hojeISO()); setAgHora("");
+    setAgErro(null); setAgLink(null); setAgLinkCopiado(false);
     setModalAberto(true);
   }
 
-  // ---------- Confirmar agendamento feito pelo profissional ----------
   async function agendarParaCliente() {
     if (!prof || !agPodeConfirmar) return;
-    setAgErro(null);
-    setAgEnviando(true);
+    setAgErro(null); setAgEnviando(true);
     const { data, error } = await supabase.rpc("agendar", {
       p_profissional_id: prof.id,
       p_servico: agServico,
@@ -281,7 +266,6 @@ export default function ProfissionalPage() {
     setAgEnviando(false);
     if (error) {
       setAgErro(error.message);
-      // Pode ter ficado ocupado nesse meio tempo: recarrega a grade.
       const { data: occ } = await supabase.rpc("horarios_ocupados", {
         p_profissional_id: prof.id,
         p_data: agData,
@@ -292,26 +276,17 @@ export default function ProfissionalPage() {
     }
     const linha = ((data as { id: string; token: string }[]) ?? [])[0];
     if (linha) {
-      setAgLink(
-        `${window.location.origin}/cliente?id=${prof.id}&token=${linha.token}`,
-      );
-      // Mostra o novo agendamento na agenda sem recarregar a pagina.
+      setAgLink(`${window.location.origin}/cliente?id=${prof.id}&token=${linha.token}`);
       setAgendamentos((prev) =>
-        [
-          ...prev,
-          {
-            id: linha.id,
-            cliente_nome: agNome.trim(),
-            cliente_telefone: agTelefone.trim(),
-            servico: agServico,
-            data: agData,
-            hora: agHora,
-            status: "confirmado" as const,
-          },
-        ].sort(
-          (a, b) =>
-            a.data.localeCompare(b.data) || a.hora.localeCompare(b.hora),
-        ),
+        [...prev, {
+          id: linha.id,
+          cliente_nome: agNome.trim(),
+          cliente_telefone: agTelefone.trim(),
+          servico: agServico,
+          data: agData,
+          hora: agHora,
+          status: "confirmado" as const,
+        }].sort((a, b) => a.data.localeCompare(b.data) || a.hora.localeCompare(b.hora)),
       );
     }
   }
@@ -327,49 +302,25 @@ export default function ProfissionalPage() {
     }
   }
 
-  // ---------- Cancelar agendamento ----------
   async function cancelar(id: string) {
     setCancelandoId(id);
-    const { error } = await supabase
-      .from("agendamentos")
-      .update({ status: "cancelado" })
-      .eq("id", id);
+    const { error } = await supabase.from("agendamentos").update({ status: "cancelado" }).eq("id", id);
     setCancelandoId(null);
-    if (error) {
-      setErro(error.message);
-      return;
-    }
-    setAgendamentos((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: "cancelado" } : a)),
-    );
+    if (error) { setErro(error.message); return; }
+    setAgendamentos((prev) => prev.map((a) => (a.id === id ? { ...a, status: "cancelado" } : a)));
   }
 
-  // ---------- Salvar horários de atendimento ----------
   async function salvarHorarios() {
     if (!prof) return;
-    setErro(null);
-    setHorariosOk(false);
-
-    const ativos = dias
-      .map((d, dia_semana) => ({ ...d, dia_semana }))
-      .filter((d) => d.ativo);
-
+    setErro(null); setHorariosOk(false);
+    const ativos = dias.map((d, dia_semana) => ({ ...d, dia_semana })).filter((d) => d.ativo);
     if (ativos.some((d) => d.fim <= d.inicio)) {
       setErro("Em algum dia o horário de fim não é maior que o de início.");
       return;
     }
-
     setSalvandoHorarios(true);
-    // Estratégia simples: apaga tudo do profissional e regrava os ativos.
-    const del = await supabase
-      .from("horarios_disponiveis")
-      .delete()
-      .eq("profissional_id", prof.id);
-    if (del.error) {
-      setSalvandoHorarios(false);
-      setErro(del.error.message);
-      return;
-    }
+    const del = await supabase.from("horarios_disponiveis").delete().eq("profissional_id", prof.id);
+    if (del.error) { setSalvandoHorarios(false); setErro(del.error.message); return; }
     if (ativos.length) {
       const ins = await supabase.from("horarios_disponiveis").insert(
         ativos.map((d) => ({
@@ -379,11 +330,7 @@ export default function ProfissionalPage() {
           hora_fim: d.fim,
         })),
       );
-      if (ins.error) {
-        setSalvandoHorarios(false);
-        setErro(ins.error.message);
-        return;
-      }
+      if (ins.error) { setSalvandoHorarios(false); setErro(ins.error.message); return; }
     }
     setSalvandoHorarios(false);
     setHorariosOk(true);
@@ -394,80 +341,46 @@ export default function ProfissionalPage() {
     setDias((prev) => prev.map((d, idx) => (idx === i ? { ...d, ...patch } : d)));
   }
 
-  // ---------- Serviços ----------
   async function adicionarServico(e: React.FormEvent) {
     e.preventDefault();
     if (!prof) return;
     const nome = novoNome.trim();
-    if (nome.length < 2) {
-      setErro("Dê um nome ao serviço (mínimo 2 caracteres).");
-      return;
-    }
-    if (!Number.isFinite(novaDuracao) || novaDuracao <= 0) {
-      setErro("A duração precisa ser maior que zero.");
-      return;
-    }
-    setErro(null);
-    setSalvandoServico(true);
-    const { data, error } = await supabase
-      .from("servicos")
-      .insert({
-        profissional_id: prof.id,
-        nome,
-        duracao_min: novaDuracao,
-      })
+    if (nome.length < 2) { setErro("Dê um nome ao serviço (mínimo 2 caracteres)."); return; }
+    if (!Number.isFinite(novaDuracao) || novaDuracao <= 0) { setErro("A duração precisa ser maior que zero."); return; }
+    setErro(null); setSalvandoServico(true);
+    const { data, error } = await supabase.from("servicos")
+      .insert({ profissional_id: prof.id, nome, duracao_min: novaDuracao })
       .select("id, nome, duracao_min")
       .single();
     setSalvandoServico(false);
-    if (error) {
-      setErro(error.message);
-      return;
-    }
-    setServicos((prev) =>
-      [...prev, data as Servico].sort((a, b) => a.nome.localeCompare(b.nome)),
-    );
-    setNovoNome("");
-    setNovaDuracao(30);
+    if (error) { setErro(error.message); return; }
+    setServicos((prev) => [...prev, data as Servico].sort((a, b) => a.nome.localeCompare(b.nome)));
+    setNovoNome(""); setNovaDuracao(30);
   }
 
   async function removerServico(id: string) {
-    setErro(null);
-    setRemovendoServicoId(id);
+    setErro(null); setRemovendoServicoId(id);
     const { error } = await supabase.from("servicos").delete().eq("id", id);
     setRemovendoServicoId(null);
-    if (error) {
-      setErro(error.message);
-      return;
-    }
+    if (error) { setErro(error.message); return; }
     setServicos((prev) => prev.filter((s) => s.id !== id));
   }
 
   async function salvarEdicao() {
     if (!editandoId || !editNome.trim()) return;
-    setErro(null);
-    setSalvandoEdicao(true);
-    const { error } = await supabase
-      .from("servicos")
+    setErro(null); setSalvandoEdicao(true);
+    const { error } = await supabase.from("servicos")
       .update({ nome: editNome.trim(), duracao_min: editDuracao })
       .eq("id", editandoId);
     setSalvandoEdicao(false);
-    if (error) {
-      setErro(error.message);
-      return;
-    }
+    if (error) { setErro(error.message); return; }
     setServicos((prev) =>
-      prev
-        .map((s) =>
-          s.id === editandoId
-            ? { ...s, nome: editNome.trim(), duracao_min: editDuracao }
-            : s,
-        )
+      prev.map((s) => s.id === editandoId ? { ...s, nome: editNome.trim(), duracao_min: editDuracao } : s)
         .sort((a, b) => a.nome.localeCompare(b.nome)),
     );
     setEditandoId(null);
   }
 
-  // ---------- Link público ----------
   async function copiarLink() {
     if (!prof) return;
     const link = `${window.location.origin}/cliente?id=${prof.id}`;
@@ -501,29 +414,23 @@ export default function ProfissionalPage() {
           Este login não tem um negócio cadastrado. Se você é o administrador,
           acesse o painel de administração.
         </p>
-        <button
-          onClick={sair}
-          className="rounded-[9px] bg-[#1a1a1a] px-5 py-2.5 font-medium text-white"
-        >
+        <button onClick={sair} className="rounded-[9px] bg-[#1a1a1a] px-5 py-2.5 font-medium text-white">
           Sair
         </button>
       </main>
     );
   }
 
-  const campoHora =
-    "rounded-lg border border-[#e6e0d4] bg-[#fafaf7] px-2.5 py-1.5 text-sm";
+  const campoHora = `rounded-lg border px-2.5 py-1.5 text-sm`;
 
   return (
-    <div className="min-h-screen bg-[#f4f1ea] text-[#1a1a1a]">
+    <div className="min-h-screen" style={{ background: tema.pageBg, color: tema.texto }}>
       {/* ---------- Cabeçalho ---------- */}
       <header className="text-[#f4f1ea]" style={{ background: fundoEscuro }}>
         <div className="mx-auto flex max-w-[1000px] items-center justify-between gap-3 px-5 py-4">
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="font-display text-xl font-semibold">
-                {prof?.nome}
-              </h1>
+              <h1 className="font-display text-xl font-semibold">{prof?.nome}</h1>
               <span
                 className="rounded-full px-2.5 py-0.5 text-xs font-bold"
                 style={{ background: destaque + "33", color: "#fff" }}
@@ -533,12 +440,21 @@ export default function ProfissionalPage() {
             </div>
             <p className="mt-0.5 text-xs opacity-60">Painel do profissional</p>
           </div>
-          <button
-            onClick={sair}
-            className="rounded-[9px] border border-white/20 px-4 py-2 text-sm font-medium transition hover:bg-white/10"
-          >
-            Sair
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setModoEscuro((v) => !v)}
+              title={modoEscuro ? "Modo claro" : "Modo escuro"}
+              className="rounded-[9px] border border-white/20 px-3 py-2 text-base transition hover:bg-white/10"
+            >
+              {modoEscuro ? "☀️" : "🌙"}
+            </button>
+            <button
+              onClick={sair}
+              className="rounded-[9px] border border-white/20 px-4 py-2 text-sm font-medium transition hover:bg-white/10"
+            >
+              Sair
+            </button>
+          </div>
         </div>
       </header>
 
@@ -558,13 +474,11 @@ export default function ProfissionalPage() {
           ].map((c) => (
             <div
               key={c.rotulo}
-              className="rounded-[14px] border border-[#e6e0d4] bg-white p-4"
+              className="rounded-[14px] p-4"
+              style={{ background: tema.cardBg, border: `1px solid ${tema.cardBorder}` }}
             >
-              <div className="text-xs text-[#999]">{c.rotulo}</div>
-              <div
-                className="mt-1 font-display text-3xl font-bold"
-                style={{ color: destaque }}
-              >
+              <div className="text-xs" style={{ color: tema.textoMuto }}>{c.rotulo}</div>
+              <div className="mt-1 font-display text-3xl font-bold" style={{ color: destaque }}>
                 {c.valor}
               </div>
             </div>
@@ -572,26 +486,33 @@ export default function ProfissionalPage() {
         </section>
 
         {/* ---------- Link público (acordeão) ---------- */}
-        <section className="mt-6 rounded-[14px] border border-[#e6e0d4] bg-white">
+        <section
+          className="mt-6 rounded-[14px]"
+          style={{ background: tema.cardBg, border: `1px solid ${tema.cardBorder}` }}
+        >
           <button
             onClick={() => setLinkExpandido((v) => !v)}
             className="flex w-full items-center justify-between px-5 py-4 text-left"
           >
-            <h2 className="font-display text-lg font-semibold">
-              Link para seus clientes
-            </h2>
-            <span className="text-[#999] transition-transform duration-200" style={{ display: "inline-block", transform: linkExpandido ? "rotate(180deg)" : "rotate(0deg)" }}>
+            <h2 className="font-display text-lg font-semibold">Link para seus clientes</h2>
+            <span
+              className="transition-transform duration-200"
+              style={{ display: "inline-block", color: tema.textoMuto, transform: linkExpandido ? "rotate(180deg)" : "rotate(0deg)" }}
+            >
               ▼
             </span>
           </button>
 
           {linkExpandido && (
-            <div className="border-t border-[#f0ece2] px-5 pb-5 pt-4">
-              <p className="text-sm text-[#777]">
+            <div className="px-5 pb-5 pt-4" style={{ borderTop: `1px solid ${tema.separador}` }}>
+              <p className="text-sm" style={{ color: tema.textoSec }}>
                 Envie este link para o cliente marcar horário — sem precisar de login.
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <code className="flex-1 overflow-x-auto rounded-lg border border-[#e6e0d4] bg-[#fafaf7] px-3 py-2 text-sm text-[#555]">
+                <code
+                  className="flex-1 overflow-x-auto rounded-lg px-3 py-2 text-sm"
+                  style={{ background: tema.inputBg, border: `1px solid ${tema.inputBorder}`, color: tema.textoSec }}
+                >
                   {typeof window !== "undefined" ? window.location.origin : ""}
                   /cliente?id={prof?.id}
                 </code>
@@ -604,10 +525,9 @@ export default function ProfissionalPage() {
                 </button>
               </div>
 
-              <div className="mt-4 border-t border-[#f0ece2] pt-4">
-                <p className="text-sm text-[#777]">
-                  Ou marque você mesmo o horário do cliente e envie o link do
-                  agendamento por WhatsApp.
+              <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${tema.separador}` }}>
+                <p className="text-sm" style={{ color: tema.textoSec }}>
+                  Ou marque você mesmo o horário do cliente e envie o link do agendamento por WhatsApp.
                 </p>
                 <button
                   onClick={abrirModalAgendar}
@@ -622,31 +542,33 @@ export default function ProfissionalPage() {
         </section>
 
         {/* ---------- Serviços ---------- */}
-        <section className="mt-6 rounded-[14px] border border-[#e6e0d4] bg-white p-5">
+        <section
+          className="mt-6 rounded-[14px] p-5"
+          style={{ background: tema.cardBg, border: `1px solid ${tema.cardBorder}` }}
+        >
           <h2 className="font-display text-lg font-semibold">Serviços</h2>
-          <p className="mt-1 text-sm text-[#777]">
+          <p className="mt-1 text-sm" style={{ color: tema.textoSec }}>
             Cadastre os serviços que o cliente pode escolher ao marcar horário.
           </p>
 
-          {/* lista */}
           <div className="mt-4 space-y-2">
             {servicos.length === 0 ? (
-              <p className="text-sm text-[#999]">
+              <p className="text-sm" style={{ color: tema.textoMuto }}>
                 Nenhum serviço cadastrado ainda. Adicione o primeiro abaixo.
               </p>
             ) : (
               servicos.map((s) =>
                 editandoId === s.id ? (
-                  /* ---- linha de edicao inline ---- */
                   <div
                     key={s.id}
-                    className="flex flex-wrap items-center gap-2 rounded-[10px] border bg-[#fafaf7] px-3.5 py-2.5"
-                    style={{ borderColor: forte }}
+                    className="flex flex-wrap items-center gap-2 rounded-[10px] px-3.5 py-2.5"
+                    style={{ background: tema.listItemBg, border: `1px solid ${forte}` }}
                   >
                     <input
                       value={editNome}
                       onChange={(e) => setEditNome(e.target.value)}
-                      className="min-w-0 flex-1 rounded-lg border border-[#e6e0d4] bg-white px-2.5 py-1.5 text-sm"
+                      className="min-w-0 flex-1 rounded-lg px-2.5 py-1.5 text-sm"
+                      style={{ background: tema.inputBg, border: `1px solid ${tema.inputBorder}`, color: tema.texto }}
                       autoFocus
                     />
                     <input
@@ -655,9 +577,10 @@ export default function ProfissionalPage() {
                       step={5}
                       value={editDuracao}
                       onChange={(e) => setEditDuracao(Number(e.target.value))}
-                      className="w-[80px] rounded-lg border border-[#e6e0d4] bg-white px-2.5 py-1.5 text-sm"
+                      className="w-[80px] rounded-lg px-2.5 py-1.5 text-sm"
+                      style={{ background: tema.inputBg, border: `1px solid ${tema.inputBorder}`, color: tema.texto }}
                     />
-                    <span className="text-[13px] text-[#888]">min</span>
+                    <span className="text-[13px]" style={{ color: tema.textoSec }}>min</span>
                     <button
                       onClick={salvarEdicao}
                       disabled={salvandoEdicao || !editNome.trim()}
@@ -668,38 +591,37 @@ export default function ProfissionalPage() {
                     </button>
                     <button
                       onClick={() => setEditandoId(null)}
-                      className="rounded-[7px] border border-[#e6e0d4] bg-white px-3 py-1.5 text-[13px] font-medium text-[#555]"
+                      className="rounded-[7px] px-3 py-1.5 text-[13px] font-medium"
+                      style={{ background: tema.cancelBtnBg, border: `1px solid ${tema.cardBorder}`, color: tema.textoSec }}
                     >
                       Cancelar
                     </button>
                   </div>
                 ) : (
-                  /* ---- linha normal ---- */
                   <div
                     key={s.id}
-                    className="flex items-center justify-between gap-3 rounded-[10px] border border-[#e6e0d4] bg-[#fafaf7] px-3.5 py-2.5"
+                    className="flex items-center justify-between gap-3 rounded-[10px] px-3.5 py-2.5"
+                    style={{ background: tema.listItemBg, border: `1px solid ${tema.cardBorder}` }}
                   >
                     <div>
                       <span className="font-medium">{s.nome}</span>
-                      <span className="ml-2 text-[13px] text-[#888]">
+                      <span className="ml-2 text-[13px]" style={{ color: tema.textoSec }}>
                         {s.duracao_min} min
                       </span>
                     </div>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => {
-                          setEditandoId(s.id);
-                          setEditNome(s.nome);
-                          setEditDuracao(s.duracao_min);
-                        }}
-                        className="rounded-[7px] border border-[#e6e0d4] bg-white px-3 py-1.5 text-[13px] font-medium text-[#555]"
+                        onClick={() => { setEditandoId(s.id); setEditNome(s.nome); setEditDuracao(s.duracao_min); }}
+                        className="rounded-[7px] px-3 py-1.5 text-[13px] font-medium"
+                        style={{ background: tema.cancelBtnBg, border: `1px solid ${tema.cardBorder}`, color: tema.textoSec }}
                       >
                         Editar
                       </button>
                       <button
                         onClick={() => removerServico(s.id)}
                         disabled={removendoServicoId === s.id}
-                        className="rounded-[7px] border border-[#e6e0d4] bg-white px-3 py-1.5 text-[13px] font-medium text-[#c0392b] disabled:opacity-50"
+                        className="rounded-[7px] px-3 py-1.5 text-[13px] font-medium text-[#c0392b] disabled:opacity-50"
+                        style={{ background: tema.cancelBtnBg, border: `1px solid ${tema.cardBorder}` }}
                       >
                         {removendoServicoId === s.id ? "Removendo..." : "Remover"}
                       </button>
@@ -710,24 +632,25 @@ export default function ProfissionalPage() {
             )}
           </div>
 
-          {/* adicionar */}
           <form
             onSubmit={adicionarServico}
-            className="mt-4 flex flex-wrap items-end gap-3 border-t border-[#f0ece2] pt-4"
+            className="mt-4 flex flex-wrap items-end gap-3 pt-4"
+            style={{ borderTop: `1px solid ${tema.separador}` }}
           >
             <div className="flex-1 min-w-[180px]">
-              <label className="mb-1.5 block text-[13px] font-medium text-[#666]">
+              <label className="mb-1.5 block text-[13px] font-medium" style={{ color: tema.textoSec }}>
                 Nome do serviço
               </label>
               <input
                 value={novoNome}
                 onChange={(e) => setNovoNome(e.target.value)}
                 placeholder="Ex.: Corte de cabelo"
-                className="w-full rounded-lg border border-[#e6e0d4] bg-[#fafaf7] px-3 py-2 text-sm"
+                className="w-full rounded-lg px-3 py-2 text-sm"
+                style={{ background: tema.inputBg, border: `1px solid ${tema.inputBorder}`, color: tema.texto }}
               />
             </div>
             <div className="w-[120px]">
-              <label className="mb-1.5 block text-[13px] font-medium text-[#666]">
+              <label className="mb-1.5 block text-[13px] font-medium" style={{ color: tema.textoSec }}>
                 Duração (min)
               </label>
               <input
@@ -736,7 +659,8 @@ export default function ProfissionalPage() {
                 step={5}
                 value={novaDuracao}
                 onChange={(e) => setNovaDuracao(Number(e.target.value))}
-                className="w-full rounded-lg border border-[#e6e0d4] bg-[#fafaf7] px-3 py-2 text-sm"
+                className="w-full rounded-lg px-3 py-2 text-sm"
+                style={{ background: tema.inputBg, border: `1px solid ${tema.inputBorder}`, color: tema.texto }}
               />
             </div>
             <button
@@ -751,11 +675,12 @@ export default function ProfissionalPage() {
         </section>
 
         {/* ---------- Horários de atendimento ---------- */}
-        <section className="mt-6 rounded-[14px] border border-[#e6e0d4] bg-white p-5">
-          <h2 className="font-display text-lg font-semibold">
-            Horários de atendimento
-          </h2>
-          <p className="mt-1 text-sm text-[#777]">
+        <section
+          className="mt-6 rounded-[14px] p-5"
+          style={{ background: tema.cardBg, border: `1px solid ${tema.cardBorder}` }}
+        >
+          <h2 className="font-display text-lg font-semibold">Horários de atendimento</h2>
+          <p className="mt-1 text-sm" style={{ color: tema.textoSec }}>
             Marque os dias que você atende e o horário de cada um.
           </p>
 
@@ -763,7 +688,8 @@ export default function ProfissionalPage() {
             {dias.map((d, i) => (
               <div
                 key={i}
-                className="flex flex-wrap items-center gap-3 border-b border-[#f0ece2] pb-2 last:border-0"
+                className="flex flex-wrap items-center gap-3 pb-2 last:border-0"
+                style={{ borderBottom: `1px solid ${tema.separador}` }}
               >
                 <label className="flex w-[150px] items-center gap-2 text-sm font-medium">
                   <input
@@ -773,24 +699,23 @@ export default function ProfissionalPage() {
                   />
                   {DIAS[i]}
                 </label>
-                <div
-                  className="flex items-center gap-2"
-                  style={{ opacity: d.ativo ? 1 : 0.4 }}
-                >
+                <div className="flex items-center gap-2" style={{ opacity: d.ativo ? 1 : 0.4 }}>
                   <input
                     type="time"
                     value={d.inicio}
                     disabled={!d.ativo}
                     onChange={(e) => atualizarDia(i, { inicio: e.target.value })}
                     className={campoHora}
+                    style={{ background: tema.inputBg, border: `1px solid ${tema.inputBorder}`, color: tema.texto }}
                   />
-                  <span className="text-[#999]">até</span>
+                  <span style={{ color: tema.textoMuto }}>até</span>
                   <input
                     type="time"
                     value={d.fim}
                     disabled={!d.ativo}
                     onChange={(e) => atualizarDia(i, { fim: e.target.value })}
                     className={campoHora}
+                    style={{ background: tema.inputBg, border: `1px solid ${tema.inputBorder}`, color: tema.texto }}
                   />
                 </div>
               </div>
@@ -807,28 +732,30 @@ export default function ProfissionalPage() {
               {salvandoHorarios ? "Salvando..." : "Salvar horários"}
             </button>
             {horariosOk && (
-              <span className="text-sm font-medium text-[#2a8a4a]">
-                Horários salvos!
-              </span>
+              <span className="text-sm font-medium text-[#2a8a4a]">Horários salvos!</span>
             )}
           </div>
         </section>
 
         {/* ---------- Agenda por dia ---------- */}
         <section className="mt-6">
-          <h2 className="mb-3 font-display text-lg font-semibold">
-            Agenda
-          </h2>
+          <h2 className="mb-3 font-display text-lg font-semibold">Agenda</h2>
 
           {porDia.length === 0 ? (
-            <div className="rounded-[14px] border border-dashed border-[#d8d2c4] bg-white/50 p-8 text-center text-sm text-[#999]">
-              Nenhum agendamento ainda. Compartilhe seu link para os clientes
-              começarem a marcar.
+            <div
+              className="rounded-[14px] p-8 text-center text-sm"
+              style={{
+                border: `1px dashed ${tema.cardBorder}`,
+                background: modoEscuro ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.5)",
+                color: tema.textoMuto,
+              }}
+            >
+              Nenhum agendamento ainda. Compartilhe seu link para os clientes começarem a marcar.
             </div>
           ) : (
             porDia.map(([data, lista]) => (
               <div key={data} className="mb-5">
-                <h3 className="mb-2 text-sm font-medium text-[#888]">
+                <h3 className="mb-2 text-sm font-medium" style={{ color: tema.textoSec }}>
                   {dataPorExtenso(data)}
                 </h3>
                 <div className="space-y-2">
@@ -837,28 +764,22 @@ export default function ProfissionalPage() {
                     return (
                       <div
                         key={a.id}
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-[#e6e0d4] bg-white p-3.5"
-                        style={{ opacity: cancelado ? 0.6 : 1 }}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] p-3.5"
+                        style={{
+                          background: tema.cardBg,
+                          border: `1px solid ${tema.cardBorder}`,
+                          opacity: cancelado ? 0.6 : 1,
+                        }}
                       >
                         <div className="flex items-center gap-3.5">
-                          <div
-                            className="min-w-[52px] font-display text-lg font-semibold"
-                            style={{ color: destaque }}
-                          >
+                          <div className="min-w-[52px] font-display text-lg font-semibold" style={{ color: destaque }}>
                             {hhmm(a.hora)}
                           </div>
                           <div>
-                            <div
-                              className="font-bold"
-                              style={{
-                                textDecoration: cancelado
-                                  ? "line-through"
-                                  : "none",
-                              }}
-                            >
+                            <div className="font-bold" style={{ textDecoration: cancelado ? "line-through" : "none" }}>
                               {a.cliente_nome}
                             </div>
-                            <div className="text-[13px] text-[#888]">
+                            <div className="text-[13px]" style={{ color: tema.textoSec }}>
                               {a.servico} · {a.cliente_telefone}
                             </div>
                           </div>
@@ -877,11 +798,10 @@ export default function ProfissionalPage() {
                             <button
                               onClick={() => cancelar(a.id)}
                               disabled={cancelandoId === a.id}
-                              className="rounded-[7px] border border-[#e6e0d4] bg-[#f4f1ea] px-3 py-1.5 text-[13px] font-medium text-[#c0392b] disabled:opacity-50"
+                              className="rounded-[7px] px-3 py-1.5 text-[13px] font-medium text-[#c0392b] disabled:opacity-50"
+                              style={{ background: tema.cancelBtnBg, border: `1px solid ${tema.cardBorder}` }}
                             >
-                              {cancelandoId === a.id
-                                ? "Cancelando..."
-                                : "Cancelar"}
+                              {cancelandoId === a.id ? "Cancelando..." : "Cancelar"}
                             </button>
                           )}
                         </div>
@@ -902,17 +822,17 @@ export default function ProfissionalPage() {
           onClick={() => setModalAberto(false)}
         >
           <div
-            className="my-auto w-full max-w-[460px] rounded-[14px] border border-[#e6e0d4] bg-white p-6 shadow-xl"
+            className="my-auto w-full max-w-[460px] rounded-[14px] p-6 shadow-xl"
+            style={{ background: tema.cardBg, border: `1px solid ${tema.cardBorder}` }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h2 className="font-display text-lg font-semibold">
-                Agendar para cliente
-              </h2>
+              <h2 className="font-display text-lg font-semibold">Agendar para cliente</h2>
               <button
                 onClick={() => setModalAberto(false)}
                 aria-label="Fechar"
-                className="rounded-[7px] px-2 py-1 text-xl leading-none text-[#999] hover:bg-[#f4f1ea]"
+                className="rounded-[7px] px-2 py-1 text-xl leading-none transition"
+                style={{ color: tema.textoMuto }}
               >
                 ×
               </button>
@@ -925,19 +845,18 @@ export default function ProfissionalPage() {
             )}
 
             {agLink ? (
-              /* -------- Sucesso: link gerado -------- */
               <div className="mt-4">
                 <div className="rounded-[12px] border border-[#cfe9d6] bg-[#f0faf3] p-4 text-center">
                   <div className="text-[34px]">✅</div>
-                  <p className="mt-1 font-medium text-[#2a8a4a]">
-                    Agendamento criado!
-                  </p>
+                  <p className="mt-1 font-medium text-[#2a8a4a]">Agendamento criado!</p>
                   <p className="mt-1 text-sm text-[#666]">
-                    Copie o link abaixo e envie para o cliente no WhatsApp. Por
-                    ele o cliente vê, cancela ou remarca o horário.
+                    Copie o link abaixo e envie para o cliente no WhatsApp. Por ele o cliente vê, cancela ou remarca o horário.
                   </p>
                 </div>
-                <code className="mt-3 block overflow-x-auto rounded-lg border border-[#e6e0d4] bg-[#fafaf7] px-3 py-2 text-sm text-[#555]">
+                <code
+                  className="mt-3 block overflow-x-auto rounded-lg px-3 py-2 text-sm"
+                  style={{ background: tema.inputBg, border: `1px solid ${tema.inputBorder}`, color: tema.textoSec }}
+                >
                   {agLink}
                 </code>
                 <div className="mt-3 flex gap-2">
@@ -950,33 +869,33 @@ export default function ProfissionalPage() {
                   </button>
                   <button
                     onClick={() => setModalAberto(false)}
-                    className="rounded-[9px] border border-[#e6e0d4] bg-white px-4 py-2.5 text-sm font-medium text-[#555]"
+                    className="rounded-[9px] px-4 py-2.5 text-sm font-medium"
+                    style={{ background: tema.cancelBtnBg, border: `1px solid ${tema.cardBorder}`, color: tema.textoSec }}
                   >
                     Fechar
                   </button>
                 </div>
               </div>
             ) : (
-              /* -------- Formulario -------- */
               <div className="mt-4">
                 {servicos.length === 0 ? (
-                  <p className="text-sm text-[#999]">
-                    Cadastre ao menos um serviço antes de agendar para um
-                    cliente.
+                  <p className="text-sm" style={{ color: tema.textoMuto }}>
+                    Cadastre ao menos um serviço antes de agendar para um cliente.
                   </p>
                 ) : (
                   <>
-                    <label className="mb-1.5 block text-[13px] font-medium text-[#666]">
+                    <label className="mb-1.5 block text-[13px] font-medium" style={{ color: tema.textoSec }}>
                       Nome do cliente
                     </label>
                     <input
                       value={agNome}
                       onChange={(e) => setAgNome(e.target.value)}
                       placeholder="Como o cliente se chama?"
-                      className="w-full rounded-[9px] border border-[#e6e0d4] bg-[#fafaf7] px-3.5 py-2.5 text-sm"
+                      className="w-full rounded-[9px] px-3.5 py-2.5 text-sm"
+                      style={{ background: tema.inputBg, border: `1px solid ${tema.inputBorder}`, color: tema.texto }}
                     />
 
-                    <label className="mb-1.5 mt-4 block text-[13px] font-medium text-[#666]">
+                    <label className="mb-1.5 mt-4 block text-[13px] font-medium" style={{ color: tema.textoSec }}>
                       Telefone
                     </label>
                     <input
@@ -984,43 +903,41 @@ export default function ProfissionalPage() {
                       onChange={(e) => setAgTelefone(e.target.value)}
                       placeholder="(11) 99999-9999"
                       inputMode="tel"
-                      className="w-full rounded-[9px] border border-[#e6e0d4] bg-[#fafaf7] px-3.5 py-2.5 text-sm"
+                      className="w-full rounded-[9px] px-3.5 py-2.5 text-sm"
+                      style={{ background: tema.inputBg, border: `1px solid ${tema.inputBorder}`, color: tema.texto }}
                     />
 
-                    <label className="mb-1.5 mt-4 block text-[13px] font-medium text-[#666]">
+                    <label className="mb-1.5 mt-4 block text-[13px] font-medium" style={{ color: tema.textoSec }}>
                       Serviço
                     </label>
                     <select
                       value={agServico}
                       onChange={(e) => setAgServico(e.target.value)}
-                      className="w-full rounded-[9px] border border-[#e6e0d4] bg-[#fafaf7] px-3.5 py-2.5 text-sm"
+                      className="w-full rounded-[9px] px-3.5 py-2.5 text-sm"
+                      style={{ background: tema.inputBg, border: `1px solid ${tema.inputBorder}`, color: tema.texto }}
                     >
                       {servicos.map((s) => (
-                        <option key={s.id} value={s.nome}>
-                          {s.nome} ({s.duracao_min} min)
-                        </option>
+                        <option key={s.id} value={s.nome}>{s.nome} ({s.duracao_min} min)</option>
                       ))}
                     </select>
 
-                    <label className="mb-1.5 mt-4 block text-[13px] font-medium text-[#666]">
+                    <label className="mb-1.5 mt-4 block text-[13px] font-medium" style={{ color: tema.textoSec }}>
                       Dia
                     </label>
                     <input
                       type="date"
                       min={hojeISO()}
                       value={agData}
-                      onChange={(e) => {
-                        setAgData(e.target.value);
-                        setAgHora("");
-                      }}
-                      className="w-full rounded-[9px] border border-[#e6e0d4] bg-[#fafaf7] px-3.5 py-2.5 text-sm"
+                      onChange={(e) => { setAgData(e.target.value); setAgHora(""); }}
+                      className="w-full rounded-[9px] px-3.5 py-2.5 text-sm"
+                      style={{ background: tema.inputBg, border: `1px solid ${tema.inputBorder}`, color: tema.texto }}
                     />
 
-                    <label className="mb-1.5 mt-4 block text-[13px] font-medium text-[#666]">
+                    <label className="mb-1.5 mt-4 block text-[13px] font-medium" style={{ color: tema.textoSec }}>
                       Horário disponível
                     </label>
                     {agGrade.length === 0 ? (
-                      <p className="mb-2 text-sm text-[#999]">
+                      <p className="mb-2 text-sm" style={{ color: tema.textoMuto }}>
                         Sem atendimento neste dia. Escolha outra data.
                       </p>
                     ) : (
@@ -1034,17 +951,9 @@ export default function ProfissionalPage() {
                               onClick={() => setAgHora(h)}
                               className="rounded-lg border py-2.5 text-sm font-medium"
                               style={{
-                                background: sel
-                                  ? forte
-                                  : ocupado
-                                    ? "#f0ece2"
-                                    : "#fff",
-                                color: sel
-                                  ? "#fff"
-                                  : ocupado
-                                    ? "#ccc"
-                                    : "#1a1a1a",
-                                borderColor: sel ? forte : "#e6e0d4",
+                                background: sel ? forte : ocupado ? tema.slotOcupBg : tema.slotBg,
+                                color: sel ? "#fff" : ocupado ? tema.slotOcupColor : tema.texto,
+                                borderColor: sel ? forte : tema.cardBorder,
                                 textDecoration: ocupado ? "line-through" : "none",
                                 cursor: ocupado ? "not-allowed" : "pointer",
                               }}
@@ -1061,12 +970,8 @@ export default function ProfissionalPage() {
                       disabled={!agPodeConfirmar || agEnviando}
                       className="mt-4 w-full rounded-[10px] py-3.5 text-[15px] font-bold text-white"
                       style={{
-                        background:
-                          !agPodeConfirmar || agEnviando ? "#ddd" : "#1a1a1a",
-                        cursor:
-                          !agPodeConfirmar || agEnviando
-                            ? "not-allowed"
-                            : "pointer",
+                        background: !agPodeConfirmar || agEnviando ? "#ddd" : "#1a1a1a",
+                        cursor: !agPodeConfirmar || agEnviando ? "not-allowed" : "pointer",
                       }}
                     >
                       {agEnviando ? "Agendando..." : "Confirmar agendamento"}
