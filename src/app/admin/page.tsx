@@ -57,7 +57,7 @@ export default function AdminPage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        router.replace("/");
+        router.replace("/admin/entrar");
         return;
       }
       if (user.email?.toLowerCase() !== ADMIN_EMAIL) {

@@ -64,7 +64,7 @@ function LoginForm() {
       <main className={telaEscura}>
         <AuroraPlataforma />
         <Link
-          href="/admin"
+          href="/admin/entrar"
           className="absolute right-4 top-4 z-10 flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[12.5px] font-medium text-[#9aa3c7] backdrop-blur-sm transition hover:border-white/25 hover:text-white"
         >
           <span aria-hidden>🛡️</span> Administrador
