@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { coresDoNicho, NICHOS, type Nicho } from "@/lib/nichos";
+import { NICHOS, nicheData, type Nicho } from "@/lib/nichos";
+
+// Cor de destaque do nicho vem das CSS vars ([data-niche] em globals.css).
+const GRAD = "var(--grad)";
+const ACCENT = "var(--accent)";
 
 // ---------- Tipos das tabelas (RLS garante: só os próprios dados) ----------
 type Profissional = { id: string; nome: string; nicho: string };
@@ -115,40 +119,42 @@ export default function ProfissionalPage() {
     localStorage.setItem("sonay-modo-escuro", String(modoEscuro));
   }, [modoEscuro]);
 
-  const { fundoEscuro, cardEscuro, destaque, forte } = coresDoNicho(prof?.nicho ?? "");
   const rotuloNicho = prof ? (NICHOS[prof.nicho as Nicho]?.rotulo ?? prof.nicho) : "";
+  const dataNiche = nicheData(prof?.nicho ?? "");
 
+  // Tema: escuro = design "glass premium"; claro = equivalente claro do mesmo estilo.
+  // Os destaques (numeros, botoes, badge) vem do gradiente do nicho (var(--grad)).
   const tema = useMemo(() => modoEscuro ? {
-    pageBg: fundoEscuro,
-    cardBg: cardEscuro,
-    cardBorder: "rgba(255,255,255,0.1)",
-    inputBg: "rgba(255,255,255,0.06)",
-    inputBorder: "rgba(255,255,255,0.15)",
-    texto: "#f4f1ea",
-    textoSec: "rgba(244,241,234,0.6)",
-    textoMuto: "rgba(244,241,234,0.4)",
+    pageBg: "#070912",
+    cardBg: "rgba(255,255,255,0.045)",
+    cardBorder: "rgba(255,255,255,0.10)",
+    inputBg: "rgba(255,255,255,0.04)",
+    inputBorder: "rgba(255,255,255,0.12)",
+    texto: "#f4f6ff",
+    textoSec: "#9aa3c7",
+    textoMuto: "rgba(154,163,199,0.6)",
     separador: "rgba(255,255,255,0.08)",
-    listItemBg: "rgba(255,255,255,0.04)",
-    cancelBtnBg: "rgba(255,255,255,0.08)",
-    slotBg: "rgba(255,255,255,0.08)",
-    slotOcupBg: "rgba(255,255,255,0.03)",
-    slotOcupColor: "rgba(244,241,234,0.25)",
+    listItemBg: "rgba(255,255,255,0.03)",
+    cancelBtnBg: "rgba(255,255,255,0.05)",
+    slotBg: "rgba(255,255,255,0.05)",
+    slotOcupBg: "rgba(255,255,255,0.02)",
+    slotOcupColor: "rgba(244,246,255,0.25)",
   } : {
-    pageBg: "#f4f1ea",
+    pageBg: "#eef1fb",
     cardBg: "#ffffff",
-    cardBorder: "#e6e0d4",
-    inputBg: "#fafaf7",
-    inputBorder: "#e6e0d4",
-    texto: "#1a1a1a",
-    textoSec: "#777",
-    textoMuto: "#999",
-    separador: "#f0ece2",
-    listItemBg: "#fafaf7",
-    cancelBtnBg: "#f4f1ea",
-    slotBg: "#fff",
-    slotOcupBg: "#f0ece2",
-    slotOcupColor: "#ccc",
-  }, [modoEscuro, fundoEscuro, cardEscuro]);
+    cardBorder: "#e4e8f4",
+    inputBg: "#f6f8fd",
+    inputBorder: "#e4e8f4",
+    texto: "#12142a",
+    textoSec: "#5a6187",
+    textoMuto: "#8a90ad",
+    separador: "#eceff7",
+    listItemBg: "#f6f8fd",
+    cancelBtnBg: "#eef1fb",
+    slotBg: "#ffffff",
+    slotOcupBg: "#eef1fb",
+    slotOcupColor: "#c3c8da",
+  }, [modoEscuro]);
 
   // ---------- Carregar dados do profissional logado ----------
   useEffect(() => {
@@ -415,7 +421,7 @@ export default function ProfissionalPage() {
   // =====================================================================
   if (carregando) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#f4f1ea] text-[#999]">
+      <main className="flex min-h-screen items-center justify-center bg-[#070912] text-[#9aa3c7]">
         Carregando seu painel...
       </main>
     );
@@ -423,12 +429,16 @@ export default function ProfissionalPage() {
 
   if (semPerfil) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f4f1ea] px-6 text-center">
-        <p className="max-w-sm text-[#666]">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#070912] px-6 text-center">
+        <p className="max-w-sm text-[#9aa3c7]">
           Este login não tem um negócio cadastrado. Se você é o administrador,
           acesse o painel de administração.
         </p>
-        <button onClick={sair} className="rounded-[9px] bg-[#1a1a1a] px-5 py-2.5 font-medium text-white">
+        <button
+          onClick={sair}
+          className="rounded-[12px] px-5 py-2.5 font-grotesk font-bold text-white"
+          style={{ background: GRAD }}
+        >
           Sair
         </button>
       </main>
@@ -438,33 +448,47 @@ export default function ProfissionalPage() {
   const campoHora = `rounded-lg border px-2.5 py-1.5 text-sm`;
 
   return (
-    <div className="min-h-screen" style={{ background: tema.pageBg, color: tema.texto }}>
+    <div
+      data-niche={dataNiche}
+      className="relative min-h-screen overflow-hidden"
+      style={{ background: tema.pageBg, color: tema.texto }}
+    >
+      {/* Glows radiais do nicho (so no modo escuro) */}
+      {modoEscuro && (
+        <>
+          <div className="pointer-events-none absolute -right-16 -top-16 z-0 h-60 w-60 rounded-full opacity-30 blur-[80px]" style={{ background: "var(--c2)" }} />
+          <div className="pointer-events-none absolute left-[-80px] top-52 z-0 h-56 w-56 rounded-full opacity-25 blur-[80px]" style={{ background: "var(--c1)" }} />
+        </>
+      )}
+
       {/* ---------- Cabeçalho ---------- */}
-      <header className="text-[#f4f1ea]" style={{ background: fundoEscuro }}>
-        <div className="mx-auto flex max-w-[1000px] items-center justify-between gap-3 px-5 py-4">
+      <header className="relative z-10">
+        <div className="mx-auto flex max-w-[1000px] items-start justify-between gap-3 px-5 pt-7 pb-1">
           <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="font-display text-xl font-semibold">{prof?.nome}</h1>
-              <span
-                className="rounded-full px-2.5 py-0.5 text-xs font-bold"
-                style={{ background: destaque + "33", color: "#fff" }}
-              >
-                {rotuloNicho}
-              </span>
-            </div>
-            <p className="mt-0.5 text-xs opacity-60">Painel do profissional</p>
+            <h1 className="font-display text-[24px] font-extrabold leading-tight">{prof?.nome}</h1>
+            <p className="mt-1 text-[12.5px]" style={{ color: tema.textoSec }}>
+              Painel do profissional
+            </p>
+            <span
+              className="mt-2.5 inline-block rounded-full px-3 py-1.5 font-grotesk text-[11px] font-bold text-white"
+              style={{ background: GRAD, boxShadow: "0 4px 14px -4px var(--accent)" }}
+            >
+              {rotuloNicho}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setModoEscuro((v) => !v)}
               title={modoEscuro ? "Modo claro" : "Modo escuro"}
-              className="rounded-[9px] border border-white/20 px-3 py-2 text-base transition hover:bg-white/10"
+              className="rounded-[11px] px-3 py-2 text-base transition hover:opacity-80"
+              style={{ background: tema.cardBg, border: `1px solid ${tema.cardBorder}` }}
             >
               {modoEscuro ? "☀️" : "🌙"}
             </button>
             <button
               onClick={sair}
-              className="rounded-[9px] border border-white/20 px-4 py-2 text-sm font-medium transition hover:bg-white/10"
+              className="rounded-[11px] px-4 py-2 text-sm font-medium transition hover:opacity-80"
+              style={{ background: tema.cardBg, border: `1px solid ${tema.cardBorder}`, color: tema.textoSec }}
             >
               Sair
             </button>
@@ -472,7 +496,7 @@ export default function ProfissionalPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[1000px] px-5 py-7">
+      <main className="relative z-10 mx-auto w-full max-w-[1000px] px-5 py-7">
         {erro && (
           <div className="mb-5 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
             {erro}
@@ -488,11 +512,11 @@ export default function ProfissionalPage() {
           ].map((c) => (
             <div
               key={c.rotulo}
-              className="rounded-[14px] p-4"
+              className="rounded-[16px] p-4"
               style={{ background: tema.cardBg, border: `1px solid ${tema.cardBorder}` }}
             >
-              <div className="text-xs" style={{ color: tema.textoMuto }}>{c.rotulo}</div>
-              <div className="mt-1 font-display text-3xl font-bold" style={{ color: destaque }}>
+              <div className="text-[11.5px]" style={{ color: tema.textoMuto }}>{c.rotulo}</div>
+              <div className="text-grad mt-1 font-display text-[30px] font-extrabold">
                 {c.valor}
               </div>
             </div>
@@ -533,7 +557,7 @@ export default function ProfissionalPage() {
                 <button
                   onClick={copiarLink}
                   className="rounded-[9px] px-4 py-2 text-sm font-bold text-white"
-                  style={{ background: copiado ? "#2a8a4a" : "#1a1a1a" }}
+                  style={{ background: copiado ? "#2a8a4a" : GRAD }}
                 >
                   {copiado ? "Copiado!" : "Copiar link"}
                 </button>
@@ -546,7 +570,7 @@ export default function ProfissionalPage() {
                 <button
                   onClick={abrirModalAgendar}
                   className="mt-3 rounded-[9px] px-4 py-2.5 text-sm font-bold text-white"
-                  style={{ background: forte }}
+                  style={{ background: GRAD }}
                 >
                   Agendar para cliente
                 </button>
@@ -597,7 +621,7 @@ export default function ProfissionalPage() {
                   <div
                     key={s.id}
                     className="flex flex-wrap items-center gap-2 rounded-[10px] px-3.5 py-2.5"
-                    style={{ background: tema.listItemBg, border: `1px solid ${forte}` }}
+                    style={{ background: tema.listItemBg, border: `1px solid ${ACCENT}` }}
                   >
                     <input
                       value={editNome}
@@ -620,7 +644,7 @@ export default function ProfissionalPage() {
                       onClick={salvarEdicao}
                       disabled={salvandoEdicao || !editNome.trim()}
                       className="rounded-[7px] px-3 py-1.5 text-[13px] font-bold text-white disabled:opacity-50"
-                      style={{ background: forte }}
+                      style={{ background: GRAD }}
                     >
                       {salvandoEdicao ? "Salvando..." : "Salvar"}
                     </button>
@@ -702,7 +726,7 @@ export default function ProfissionalPage() {
               type="submit"
               disabled={salvandoServico}
               className="rounded-[9px] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-              style={{ background: forte }}
+              style={{ background: GRAD }}
             >
               {salvandoServico ? "Adicionando..." : "Adicionar"}
             </button>
@@ -778,7 +802,7 @@ export default function ProfissionalPage() {
               onClick={salvarHorarios}
               disabled={salvandoHorarios}
               className="rounded-[9px] py-2.5 px-5 text-sm font-bold text-white disabled:opacity-50"
-              style={{ background: forte }}
+              style={{ background: GRAD }}
             >
               {salvandoHorarios ? "Salvando..." : "Salvar horários"}
             </button>
@@ -825,7 +849,7 @@ export default function ProfissionalPage() {
                         }}
                       >
                         <div className="flex items-center gap-3.5">
-                          <div className="min-w-[52px] font-display text-lg font-semibold" style={{ color: destaque }}>
+                          <div className="text-grad min-w-[54px] font-grotesk text-lg font-bold">
                             {hhmm(a.hora)}
                           </div>
                           <div>
@@ -839,11 +863,12 @@ export default function ProfissionalPage() {
                         </div>
                         <div className="flex items-center gap-2.5">
                           <span
-                            className="rounded-full px-2.5 py-1 text-xs font-bold"
-                            style={{
-                              background: cancelado ? "#fbe3e0" : "#e3f5e8",
-                              color: cancelado ? "#c0392b" : "#2a8a4a",
-                            }}
+                            className="rounded-full px-2.5 py-1 text-[10.5px] font-bold"
+                            style={
+                              cancelado
+                                ? { background: "rgba(255,90,90,0.13)", color: "#ff8a8a", border: "1px solid rgba(255,90,90,0.25)" }
+                                : { background: "rgba(60,220,130,0.12)", color: "#3fbf7a", border: "1px solid rgba(60,220,130,0.25)" }
+                            }
                           >
                             {a.status}
                           </span>
@@ -916,7 +941,7 @@ export default function ProfissionalPage() {
                   <button
                     onClick={copiarLinkAgendamento}
                     className="flex-1 rounded-[9px] px-4 py-2.5 text-sm font-bold text-white"
-                    style={{ background: agLinkCopiado ? "#2a8a4a" : "#1a1a1a" }}
+                    style={{ background: agLinkCopiado ? "#2a8a4a" : GRAD }}
                   >
                     {agLinkCopiado ? "Copiado!" : "Copiar link"}
                   </button>
@@ -1004,9 +1029,9 @@ export default function ProfissionalPage() {
                               onClick={() => setAgHora(h)}
                               className="rounded-lg border py-2.5 text-sm font-medium"
                               style={{
-                                background: sel ? forte : ocupado ? tema.slotOcupBg : tema.slotBg,
+                                background: sel ? GRAD : ocupado ? tema.slotOcupBg : tema.slotBg,
                                 color: sel ? "#fff" : ocupado ? tema.slotOcupColor : tema.texto,
-                                borderColor: sel ? forte : tema.cardBorder,
+                                borderColor: sel ? "transparent" : tema.cardBorder,
                                 textDecoration: ocupado ? "line-through" : "none",
                                 cursor: ocupado ? "not-allowed" : "pointer",
                               }}
@@ -1021,10 +1046,10 @@ export default function ProfissionalPage() {
                     <button
                       onClick={agendarParaCliente}
                       disabled={!agPodeConfirmar || agEnviando}
-                      className="mt-4 w-full rounded-[10px] py-3.5 text-[15px] font-bold text-white"
+                      className="mt-4 w-full rounded-[12px] py-3.5 font-grotesk text-[15px] font-bold text-white transition disabled:cursor-not-allowed"
                       style={{
-                        background: !agPodeConfirmar || agEnviando ? "#ddd" : "#1a1a1a",
-                        cursor: !agPodeConfirmar || agEnviando ? "not-allowed" : "pointer",
+                        background: !agPodeConfirmar || agEnviando ? tema.slotOcupBg : GRAD,
+                        color: !agPodeConfirmar || agEnviando ? tema.textoMuto : "#fff",
                       }}
                     >
                       {agEnviando ? "Agendando..." : "Confirmar agendamento"}
