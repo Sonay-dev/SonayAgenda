@@ -57,6 +57,12 @@
   color: transparent;
 }
 
+/* Foco visivel (acessibilidade) usando a cor de destaque do nicho. */
+:where(input, select, textarea, button, a):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
