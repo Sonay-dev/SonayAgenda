@@ -38,7 +38,8 @@
 - **/** — Splash da marca + tela de login (fundo escuro #15131f)
 - **/cadastro** — Cadastro de negócio (nome + nicho + senha com checklist)
 - **/profissional** — Painel do profissional (agenda, serviços, horários, link)
-- **/admin** — Painel admin nas cores da marca Sonay (receita, suspender, remover)
+- **/admin** — Painel admin dark premium (sidebar responsiva com drawer no mobile, toggle claro/escuro, gráficos SVG de receita/cadastros, donut ativos×inadimplentes, busca, receita/suspender/remover)
+- **/admin/entrar** — Tela de login exclusiva do admin (valida que o e-mail é admin; tem "Esqueci minha senha"). O botão "🛡️ Administrador" no topo do login (/) aponta pra cá
 - **/cliente?id=** — Tela pública de agendamento via link
 - **/cliente?id=&token=** — Tela do cliente para ver/cancelar/remarcar agendamento criado pelo profissional
 - **/esqueci-senha** e **/redefinir-senha** — Recuperação de senha (funciona em produção)
@@ -57,6 +58,8 @@
 - Paletas de cores individuais por nicho: fundoEscuro, cardEscuro, destaque, fundoClaro, forte (definidas em src/lib/nichos.ts)
 - Seções "Link para seus clientes", "Serviços" e "Horários de atendimento" recolhidas em acordeão no painel — só a Agenda fica visível por padrão
 - Sessão do profissional persiste automaticamente via src/proxy.ts (Next.js 16 — renova o token Supabase a cada requisição)
+- **Re-skin visual "dark premium"** aplicado em todas as telas (01/07/2026): fundo escuro, cards de vidro, glows, gradiente por nicho
+- Ao reabrir o app, se já houver sessão válida, entra **direto no painel** (a tela `/` só mostra o formulário para quem não está logado) — só desloga no "Sair"
 
 ---
 
@@ -154,8 +157,22 @@ git push
 - `docs/checklist-producao.md` — checklist de testes em produção
 - `.env.local` — chaves do Supabase (NÃO vai pro GitHub)
 - `src/proxy.ts` — renova sessão Supabase a cada requisição (Next.js 16, substitui middleware.ts)
-- `src/lib/nichos.ts` — paletas de cores por nicho (5 propriedades: fundoEscuro, cardEscuro, destaque, fundoClaro, forte)
+- `src/lib/nichos.ts` — paletas de cores por nicho + `nicheData()` que mapeia o nicho salvo para a chave `[data-niche]` do design (fisioterapia→fisio, personal→academia)
+- `src/app/globals.css` — tokens do design dark premium (`--bg`, `--surface`, `--stroke`, `--grad`) + seletores `[data-niche]` + `.text-grad` + foco visível
+- `src/app/layout.tsx` — fontes Poppins (títulos) + Inter (corpo) + Space Grotesk (números/botões)
+- `src/app/_components/ui.tsx` — componentes de plataforma reutilizados (`cartaoVidro`, `AuroraPlataforma`, `GRAD_PLATAFORMA`, Marca, campos, BotaoPrimario)
+- `src/app/admin/entrar/page.tsx` — login exclusivo do admin
 
 ---
 
-*Atualizado em 10/06/2026 — retome com "retome de onde paramos".*
+## Sessão 01/07/2026 (o que foi feito)
+- **Re-skin visual dark premium** nas 3 superfícies + telas de plataforma (login, cadastro, esqueci/redefinir senha), painel e página pública. Toggle claro/escuro preservado (dark = design novo; claro = versão clara equivalente). Cor por nicho via `data-niche` + `var(--grad)`.
+- Fontes trocadas para Poppins/Inter/Space Grotesk.
+- **Admin:** botão "🛡️ Administrador" no login → nova tela `/admin/entrar` (login só do admin, com "Esqueci minha senha"). Dashboard `/admin` refeito no estilo do mockup `public/admin_tela.jpg`: sidebar (drawer no mobile via ☰), toggle claro/escuro, gráficos SVG (sem libs, dados reais), donut, busca funcional. Lógica de negócio intacta.
+- **Conta admin** (sonaydev88@gmail.com): já existia no Supabase; a senha foi (re)definida via SQL. Login com ela cai direto no `/admin` (rotaAposLogin reconhece pelo e-mail).
+- **Bug de sessão corrigido:** o PWA abre em `/` e a tela não checava sessão → parecia deslogar. Agora `/` entra direto no painel se houver sessão; só desloga no "Sair". Testado OK no admin.
+- Pendente de teste: confirmar o auto-login também numa conta de **profissional**.
+
+---
+
+*Atualizado em 01/07/2026 — retome com "retome de onde paramos".*
