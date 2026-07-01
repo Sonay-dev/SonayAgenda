@@ -1,16 +1,24 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Fraunces } from "next/font/google";
+import { Inter, Poppins, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegister from "./_components/ServiceWorkerRegister";
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+// Sistema de fontes do design: Inter (corpo), Poppins (titulos), Space Grotesk (numeros/botoes).
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+const poppins = Poppins({
+  variable: "--font-poppins",
   subsets: ["latin"],
+  weight: ["600", "700", "800"],
+});
+
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
+  subsets: ["latin"],
+  weight: ["500", "700"],
 });
 
 export const metadata: Metadata = {
@@ -46,7 +54,7 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`${dmSans.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${inter.variable} ${poppins.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <ServiceWorkerRegister />

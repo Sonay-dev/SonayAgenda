@@ -44,3 +44,17 @@ export function coresDoNicho(nicho: string): CoresNicho {
 export function corDoNicho(nicho: string): string {
   return coresDoNicho(nicho).destaque;
 }
+
+// Mapeia o nicho salvo no banco para a chave [data-niche] do design
+// (globals.css). Barbearia e o padrao (retorna "barbearia").
+const NICHE_DATA: Record<Nicho, string> = {
+  barbearia: "barbearia",
+  salao: "salao",
+  estetica: "estetica",
+  fisioterapia: "fisio",
+  personal: "academia",
+};
+
+export function nicheData(nicho: string): string {
+  return NICHE_DATA[nicho as Nicho] ?? "barbearia";
+}
