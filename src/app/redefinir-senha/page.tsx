@@ -10,6 +10,8 @@ import {
   senhaValida,
   BotaoPrimario,
   telaEscura,
+  cartaoVidro,
+  AuroraPlataforma,
 } from "../_components/ui";
 import { supabase } from "@/lib/supabase";
 
@@ -53,35 +55,36 @@ export default function RedefinirSenhaPage() {
 
   return (
     <main className={telaEscura}>
-      <div className="card-fade w-full max-w-[400px] rounded-[18px] bg-white p-7 shadow-xl">
+      <AuroraPlataforma />
+      <div className={cartaoVidro}>
         <Marca />
 
         {ok ? (
           <div className="mt-6 text-center">
             <div className="text-[44px]">✅</div>
-            <h1 className="mt-2 font-display text-[22px] font-semibold text-[#1a1a1a]">
+            <h1 className="mt-2 font-display text-[21px] font-bold text-white">
               Senha alterada!
             </h1>
-            <p className="mt-2 text-sm text-[#666]">
+            <p className="mt-2 text-sm text-[#9aa3c7]">
               Redirecionando para o login...
             </p>
           </div>
         ) : (
           <form onSubmit={salvar}>
-            <h1 className="mt-6 text-center font-display text-[22px] font-semibold text-[#1a1a1a]">
+            <h1 className="mt-6 text-center font-display text-[21px] font-bold text-white">
               Nova senha
             </h1>
-            <p className="mt-1 text-center text-sm text-[#777]">
+            <p className="mt-1.5 text-center text-[13.5px] text-[#9aa3c7]">
               Escolha uma nova senha para sua conta.
             </p>
 
             {erro && (
-              <div className="mt-4 rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
+              <div className="mt-4 rounded-xl border border-red-400/40 bg-red-500/15 px-3.5 py-2.5 text-sm text-[#ffb4b4]">
                 {erro}
               </div>
             )}
 
-            <label className="mb-1.5 mt-5 block text-[13px] font-medium text-[#666]">
+            <label className="mb-1.5 mt-5 block text-[12.5px] font-medium text-[#9aa3c7]">
               Nova senha
             </label>
             <CampoSenha
@@ -92,7 +95,7 @@ export default function RedefinirSenhaPage() {
             />
             <ChecklistSenha senha={senha} />
 
-            <label className="mb-1.5 mt-4 block text-[13px] font-medium text-[#666]">
+            <label className="mb-1.5 mt-4 block text-[12.5px] font-medium text-[#9aa3c7]">
               Confirmar senha
             </label>
             <CampoSenha
@@ -111,7 +114,7 @@ export default function RedefinirSenhaPage() {
             </BotaoPrimario>
 
             <div className="mt-5 text-center text-sm">
-              <Link href="/" className="text-[#15131f] underline opacity-70">
+              <Link href="/" className="text-[#a78bfa] hover:text-white">
                 Voltar para o login
               </Link>
             </div>

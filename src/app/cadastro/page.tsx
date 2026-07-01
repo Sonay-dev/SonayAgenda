@@ -11,6 +11,8 @@ import {
   senhaValida,
   BotaoPrimario,
   telaEscura,
+  cartaoVidro,
+  AuroraPlataforma,
 } from "../_components/ui";
 import { NICHOS_LISTA, type Nicho } from "@/lib/nichos";
 import { supabase } from "@/lib/supabase";
@@ -73,25 +75,23 @@ export default function CadastroPage() {
 
   return (
     <main className={telaEscura}>
-      <form
-        onSubmit={cadastrar}
-        className="card-fade w-full max-w-[400px] rounded-[18px] bg-white p-7 shadow-xl"
-      >
+      <AuroraPlataforma />
+      <form onSubmit={cadastrar} className={cartaoVidro}>
         <Marca />
-        <h1 className="mt-6 text-center font-display text-[22px] font-semibold text-[#1a1a1a]">
+        <h1 className="mt-6 text-center font-display text-[21px] font-bold text-white">
           Cadastrar seu negócio
         </h1>
-        <p className="mt-1 text-center text-sm text-[#777]">
+        <p className="mt-1.5 text-center text-[13.5px] text-[#9aa3c7]">
           Crie sua conta para gerenciar a agenda.
         </p>
 
         {erro && (
-          <div className="mt-4 rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
+          <div className="mt-4 rounded-xl border border-red-400/40 bg-red-500/15 px-3.5 py-2.5 text-sm text-[#ffb4b4]">
             {erro}
           </div>
         )}
 
-        <label className="mb-1.5 mt-5 block text-[13px] font-medium text-[#666]">
+        <label className="mb-1.5 mt-5 block text-[12.5px] font-medium text-[#9aa3c7]">
           Nome do negócio
         </label>
         <Campo
@@ -100,22 +100,22 @@ export default function CadastroPage() {
           placeholder="Ex.: Studio Léo Barbearia"
         />
 
-        <label className="mb-1.5 mt-4 block text-[13px] font-medium text-[#666]">
+        <label className="mb-1.5 mt-4 block text-[12.5px] font-medium text-[#9aa3c7]">
           Nicho
         </label>
         <select
           value={nicho}
           onChange={(e) => setNicho(e.target.value as Nicho)}
-          className="w-full rounded-[9px] border border-[#e6e0d4] bg-[#fafaf7] px-3.5 py-2.5 text-sm outline-none focus:border-[#15131f]"
+          className="w-full rounded-[13px] border border-white/10 bg-white/[0.04] px-3.5 py-3 text-sm text-[#f4f6ff] outline-none transition focus:border-[#7c3aed] focus:ring-2 focus:ring-[#7c3aed]/40"
         >
           {NICHOS_LISTA.map((n) => (
-            <option key={n.valor} value={n.valor}>
+            <option key={n.valor} value={n.valor} className="text-[#1a1a1a]">
               {n.rotulo}
             </option>
           ))}
         </select>
 
-        <label className="mb-1.5 mt-4 block text-[13px] font-medium text-[#666]">
+        <label className="mb-1.5 mt-4 block text-[12.5px] font-medium text-[#9aa3c7]">
           E-mail
         </label>
         <Campo
@@ -126,7 +126,7 @@ export default function CadastroPage() {
           placeholder="voce@exemplo.com"
         />
 
-        <label className="mb-1.5 mt-4 block text-[13px] font-medium text-[#666]">
+        <label className="mb-1.5 mt-4 block text-[12.5px] font-medium text-[#9aa3c7]">
           Senha
         </label>
         <CampoSenha
@@ -145,9 +145,12 @@ export default function CadastroPage() {
           {enviando ? "Criando conta..." : "Criar conta"}
         </BotaoPrimario>
 
-        <div className="mt-5 border-t border-[#eee] pt-5 text-center text-sm text-[#777]">
+        <div className="mt-5 border-t border-white/10 pt-5 text-center text-[13.5px] text-[#9aa3c7]">
           Já tem conta?{" "}
-          <Link href="/" className="font-semibold text-[#15131f] underline">
+          <Link
+            href="/"
+            className="font-semibold text-white underline decoration-[#7c3aed] decoration-2 underline-offset-2"
+          >
             Entrar
           </Link>
         </div>

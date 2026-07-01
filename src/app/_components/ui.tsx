@@ -2,21 +2,40 @@
 
 import { useState } from "react";
 
-// Wrapper das telas de entrada: fundo escuro da marca, conteudo centralizado.
+// Gradiente FIXO da plataforma (login/cadastro) — nao usa cor de nicho.
+export const GRAD_PLATAFORMA =
+  "linear-gradient(120deg,#2F80ED,#7c3aed 60%,#E08A1E)";
+
+// Wrapper das telas de entrada: fundo escuro da plataforma, conteudo centralizado.
 export const telaEscura =
-  "flex min-h-screen flex-col items-center justify-center bg-[#15131f] px-5 py-10";
+  "relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#080b1c] px-5 py-10";
+
+// Cartao de vidro (glass) das telas de plataforma.
+export const cartaoVidro =
+  "card-fade relative z-10 w-full max-w-[400px] rounded-[26px] border border-white/10 bg-[rgba(12,14,28,0.66)] p-7 shadow-[0_30px_70px_-30px_rgba(0,0,0,0.7)] backdrop-blur-xl";
+
+// Auroras desfocadas de fundo (azul + violeta + dourado) da plataforma.
+export function AuroraPlataforma() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <span className="absolute -left-24 -top-28 h-72 w-72 rounded-full bg-[#2F80ED] opacity-55 blur-[70px]" />
+      <span className="absolute right-[-90px] top-28 h-64 w-64 rounded-full bg-[#7c3aed] opacity-55 blur-[70px]" />
+      <span className="absolute bottom-[-40px] left-10 h-60 w-60 rounded-full bg-[#E08A1E] opacity-40 blur-[70px]" />
+    </div>
+  );
+}
 
 // Marca AgendaSonay (badge "S" + nome), usada no topo dos cartoes.
 export function Marca() {
   return (
     <div className="flex items-center justify-center gap-2.5">
       <span
-        className="flex h-9 w-9 items-center justify-center rounded-[10px] font-display text-lg font-bold text-white"
-        style={{ background: "linear-gradient(135deg,#22d3ee,#a855f7)" }}
+        className="flex h-11 w-11 items-center justify-center rounded-[13px] font-display text-[22px] font-extrabold text-white shadow-[0_0_22px_-4px_#7c3aed]"
+        style={{ background: GRAD_PLATAFORMA }}
       >
         S
       </span>
-      <span className="font-display text-xl font-semibold text-[#1a1a1a]">
+      <span className="font-display text-[22px] font-extrabold text-white">
         AgendaSonay
       </span>
     </div>
@@ -24,7 +43,7 @@ export function Marca() {
 }
 
 const baseCampo =
-  "w-full rounded-[9px] border border-[#e6e0d4] bg-[#fafaf7] px-3.5 py-2.5 text-sm outline-none focus:border-[#15131f]";
+  "w-full rounded-[13px] border border-white/10 bg-white/[0.04] px-3.5 py-3 text-sm text-[#f4f6ff] outline-none transition placeholder:text-[#5c6486] focus:border-[#7c3aed] focus:ring-2 focus:ring-[#7c3aed]/40";
 
 // Campo de senha com botao de ver/ocultar (olho).
 export function CampoSenha({
@@ -53,7 +72,7 @@ export function CampoSenha({
         type="button"
         onClick={() => setVer((v) => !v)}
         aria-label={ver ? "Ocultar senha" : "Mostrar senha"}
-        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-[#888] hover:text-[#15131f]"
+        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-[#9aa3c7] hover:text-white"
       >
         {ver ? <OlhoCortado /> : <Olho />}
       </button>
@@ -96,11 +115,11 @@ export function ChecklistSenha({ senha }: { senha: string }) {
           <li
             key={r.rotulo}
             className="flex items-center gap-2 text-[13px]"
-            style={{ color: ok ? "#2a8a4a" : "#999" }}
+            style={{ color: ok ? "#7ee0a8" : "#9aa3c7" }}
           >
             <span
               className="flex h-4 w-4 flex-none items-center justify-center rounded-full text-[10px] font-bold text-white"
-              style={{ background: ok ? "#2a8a4a" : "#cfcabd" }}
+              style={{ background: ok ? "#2a8a4a" : "rgba(255,255,255,0.15)" }}
             >
               {ok ? "✓" : ""}
             </span>
@@ -121,8 +140,13 @@ export function BotaoPrimario({
   return (
     <button
       {...props}
+      style={{
+        background: GRAD_PLATAFORMA,
+        boxShadow: "0 14px 34px -10px rgba(124,58,237,0.8)",
+        ...props.style,
+      }}
       className={
-        "w-full rounded-[10px] bg-[#15131f] py-3 text-[15px] font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-50 " +
+        "w-full rounded-[14px] py-3.5 font-grotesk text-[15px] font-bold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 " +
         className
       }
     >

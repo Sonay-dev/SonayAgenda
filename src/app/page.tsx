@@ -4,7 +4,14 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Splash from "./_components/Splash";
-import { Marca, CampoSenha, BotaoPrimario, telaEscura } from "./_components/ui";
+import {
+  Marca,
+  CampoSenha,
+  BotaoPrimario,
+  telaEscura,
+  cartaoVidro,
+  AuroraPlataforma,
+} from "./_components/ui";
 import { supabase } from "@/lib/supabase";
 import { rotaAposLogin } from "@/lib/auth";
 
@@ -55,25 +62,23 @@ function LoginForm() {
   return (
     <Splash>
       <main className={telaEscura}>
-        <form
-          onSubmit={entrar}
-          className="card-fade w-full max-w-[400px] rounded-[18px] bg-white p-7 shadow-xl"
-        >
+        <AuroraPlataforma />
+        <form onSubmit={entrar} className={cartaoVidro}>
           <Marca />
-          <h1 className="mt-6 text-center font-display text-[22px] font-semibold text-[#1a1a1a]">
+          <h1 className="mt-6 text-center font-display text-[21px] font-bold text-white">
             Entrar no seu negócio
           </h1>
-          <p className="mt-1 text-center text-sm text-[#777]">
+          <p className="mt-1.5 text-center text-[13.5px] text-[#9aa3c7]">
             Acesse a agenda do seu negócio.
           </p>
 
           {erroMostrado && (
-            <div className="mt-4 rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
+            <div className="mt-4 rounded-xl border border-red-400/40 bg-red-500/15 px-3.5 py-2.5 text-sm text-[#ffb4b4]">
               {erroMostrado}
             </div>
           )}
 
-          <label className="mb-1.5 mt-5 block text-[13px] font-medium text-[#666]">
+          <label className="mb-1.5 mt-5 block text-[12.5px] font-medium text-[#9aa3c7]">
             E-mail
           </label>
           <input
@@ -82,10 +87,10 @@ function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="voce@exemplo.com"
-            className="w-full rounded-[9px] border border-[#e6e0d4] bg-[#fafaf7] px-3.5 py-2.5 text-sm outline-none focus:border-[#15131f]"
+            className="w-full rounded-[13px] border border-white/10 bg-white/[0.04] px-3.5 py-3 text-sm text-[#f4f6ff] outline-none transition placeholder:text-[#5c6486] focus:border-[#7c3aed] focus:ring-2 focus:ring-[#7c3aed]/40"
           />
 
-          <label className="mb-1.5 mt-4 block text-[13px] font-medium text-[#666]">
+          <label className="mb-1.5 mt-4 block text-[12.5px] font-medium text-[#9aa3c7]">
             Senha
           </label>
           <CampoSenha
@@ -101,13 +106,13 @@ function LoginForm() {
                 type="checkbox"
                 checked={lembrar}
                 onChange={(e) => setLembrar(e.target.checked)}
-                className="h-4 w-4 accent-[#15131f]"
+                className="h-4 w-4 accent-[#7c3aed]"
               />
-              <span className="text-[13px] text-[#666]">Continuar conectado</span>
+              <span className="text-[12.5px] text-[#9aa3c7]">Continuar conectado</span>
             </label>
             <Link
               href="/esqueci-senha"
-              className="text-[13px] text-[#15131f] underline opacity-70 hover:opacity-100"
+              className="text-[12.5px] text-[#a78bfa] hover:text-white"
             >
               Esqueci minha senha
             </Link>
@@ -121,18 +126,31 @@ function LoginForm() {
             {entrando ? "Entrando..." : "Entrar no seu negócio"}
           </BotaoPrimario>
 
-          <div className="mt-5 border-t border-[#eee] pt-5 text-center text-sm text-[#777]">
+          <div className="mt-5 border-t border-white/10 pt-5 text-center text-[13.5px] text-[#9aa3c7]">
             Ainda não tem conta?{" "}
             <Link
               href="/cadastro"
-              className="font-semibold text-[#15131f] underline"
+              className="font-semibold text-white underline decoration-[#7c3aed] decoration-2 underline-offset-2"
             >
               Cadastrar seu negócio
             </Link>
           </div>
+
+          <div className="mt-5 flex flex-wrap justify-center gap-1.5">
+            {["💈 Barbearia", "🏋️ Personal", "💇 Salão", "🤲 Fisio", "✨ Estética"].map(
+              (n) => (
+                <span
+                  key={n}
+                  className="rounded-full border border-white/10 px-2.5 py-1 text-[10.5px] text-[#9aa3c7]"
+                >
+                  {n}
+                </span>
+              ),
+            )}
+          </div>
         </form>
 
-        <p className="mx-auto mt-4 max-w-[400px] px-2 text-center text-[12px] leading-relaxed text-white/50">
+        <p className="relative z-10 mx-auto mt-5 max-w-[400px] px-2 text-center text-[11.5px] leading-relaxed text-[#5c6486]">
           Esta área é para profissionais. Clientes devem usar o link enviado
           pelo seu prestador de serviço.
         </p>
