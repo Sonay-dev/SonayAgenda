@@ -99,6 +99,15 @@ export default function AdminLoginPage() {
           placeholder="Sua senha de admin"
         />
 
+        <div className="mt-3 text-right">
+          <Link
+            href="/esqueci-senha"
+            className="text-[12.5px] text-[#a78bfa] hover:text-white"
+          >
+            Esqueci minha senha
+          </Link>
+        </div>
+
         <BotaoPrimario type="submit" disabled={entrando} className="mt-5">
           {entrando ? "Entrando..." : "Entrar como administrador"}
         </BotaoPrimario>
