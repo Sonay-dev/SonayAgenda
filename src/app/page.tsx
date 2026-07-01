@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Splash from "./_components/Splash";
@@ -23,6 +23,31 @@ function LoginForm() {
   const [erro, setErro] = useState<string | null>(null);
   const [entrando, setEntrando] = useState(false);
   const [lembrar, setLembrar] = useState(true);
+  // Enquanto verifica se já existe sessão salva (evita piscar o formulário).
+  const [verificando, setVerificando] = useState(true);
+
+  // Ao abrir o app: se já houver sessão válida, entra direto no painel.
+  // Só mostra o formulário para quem realmente não está logado.
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      // Respeita quem desmarcou "Continuar conectado" (sessão só até fechar).
+      const naoContinuar =
+        localStorage.getItem("sonay-lembrar") === "false" &&
+        !sessionStorage.getItem("sonay-sessao");
+      if (session && !naoContinuar) {
+        router.replace(rotaAposLogin(session.user.email));
+        return;
+      }
+      if (vivo) setVerificando(false);
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [router]);
 
   // Mensagem quando o link de confirmacao/recuperacao falha (/?erro=confirma).
   const erroUrl =
@@ -57,6 +82,15 @@ function LoginForm() {
       sessionStorage.setItem("sonay-sessao", "ativa");
     }
     router.replace(rotaAposLogin(data.user?.email));
+  }
+
+  // Enquanto checa a sessão (ou vai redirecionar), mostra só o fundo escuro.
+  if (verificando) {
+    return (
+      <Splash>
+        <main className={telaEscura} />
+      </Splash>
+    );
   }
 
   return (
