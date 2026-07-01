@@ -3,7 +3,11 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { coresDoNicho, NICHOS, type Nicho } from "@/lib/nichos";
+import { NICHOS, nicheData, type Nicho } from "@/lib/nichos";
+
+// Cor de destaque do nicho vem das CSS vars ([data-niche] em globals.css).
+const GRAD = "var(--grad)";
+const ACCENT = "var(--accent)";
 
 type Profissional = { id: string; nome: string; nicho: string };
 type Servico = { id: string; nome: string; duracao_min: number };
@@ -39,30 +43,36 @@ function rotuloNicho(nicho: string): string {
 }
 
 function Cabecalho({
-  fundoEscuro = "#1a1a1a",
   modoEscuro,
   onToggle,
 }: {
-  fundoEscuro?: string;
   modoEscuro: boolean;
   onToggle: () => void;
 }) {
+  const headerBg = modoEscuro ? "rgba(7,9,18,0.55)" : "rgba(255,255,255,0.75)";
+  const borda = modoEscuro ? "rgba(255,255,255,0.08)" : "#e4e8f4";
+  const txt = modoEscuro ? "#f4f6ff" : "#12142a";
+  const txtSec = modoEscuro ? "#9aa3c7" : "#5a6187";
   return (
-    <header className="text-[#f4f1ea]" style={{ background: fundoEscuro }}>
+    <header
+      className="sticky top-0 z-20 backdrop-blur-md"
+      style={{ background: headerBg, borderBottom: `1px solid ${borda}`, color: txt }}
+    >
       <div className="mx-auto flex max-w-[1000px] items-center justify-between gap-2.5 px-5 py-3.5">
         <div className="flex items-center gap-2.5">
           <span
-            className="flex h-[30px] w-[30px] items-center justify-center rounded-lg font-display font-bold text-white"
-            style={{ background: "linear-gradient(135deg,#22d3ee,#a855f7)" }}
+            className="flex h-[30px] w-[30px] items-center justify-center rounded-lg font-display font-extrabold text-white"
+            style={{ background: GRAD }}
           >
             S
           </span>
-          <span className="font-display text-[19px] font-semibold">AgendaSonay</span>
+          <span className="font-display text-[19px] font-bold">AgendaSonay</span>
         </div>
         <button
           onClick={onToggle}
           title={modoEscuro ? "Modo claro" : "Modo escuro"}
-          className="rounded-[9px] border border-white/20 px-3 py-1.5 text-base transition hover:bg-white/10"
+          className="rounded-[11px] px-3 py-1.5 text-base transition hover:opacity-80"
+          style={{ border: `1px solid ${borda}`, color: txtSec }}
         >
           {modoEscuro ? "☀️" : "🌙"}
         </button>
@@ -119,36 +129,36 @@ function ClienteAgendamento() {
 
   const toggle = () => setModoEscuro((v) => !v);
 
-  // ---------- Cores do nicho (modo normal) ----------
-  const { fundoEscuro, cardEscuro, destaque, fundoClaro, forte } = coresDoNicho(prof?.nicho ?? "");
+  // ---------- Tema do nicho (via CSS vars) ----------
+  const dataNiche = nicheData(prof?.nicho ?? "");
 
   const tema = useMemo(() => modoEscuro ? {
-    pageBg: fundoEscuro,
-    cardBg: cardEscuro,
-    cardBorder: "rgba(255,255,255,0.1)",
-    inputBg: "rgba(255,255,255,0.06)",
-    inputBorder: "rgba(255,255,255,0.15)",
-    texto: "#f4f1ea",
-    textoSec: "rgba(244,241,234,0.6)",
-    textoMuto: "rgba(244,241,234,0.4)",
+    pageBg: "#070912",
+    cardBg: "rgba(255,255,255,0.045)",
+    cardBorder: "rgba(255,255,255,0.10)",
+    inputBg: "rgba(255,255,255,0.04)",
+    inputBorder: "rgba(255,255,255,0.12)",
+    texto: "#f4f6ff",
+    textoSec: "#9aa3c7",
+    textoMuto: "rgba(154,163,199,0.6)",
     separador: "rgba(255,255,255,0.08)",
-    slotBg: "rgba(255,255,255,0.08)",
-    slotOcupBg: "rgba(255,255,255,0.03)",
-    slotOcupColor: "rgba(244,241,234,0.25)",
+    slotBg: "rgba(255,255,255,0.05)",
+    slotOcupBg: "rgba(255,255,255,0.02)",
+    slotOcupColor: "rgba(244,246,255,0.25)",
   } : {
-    pageBg: fundoClaro,
+    pageBg: "#eef1fb",
     cardBg: "#ffffff",
-    cardBorder: "#e6e0d4",
-    inputBg: "#fafaf7",
-    inputBorder: "#e6e0d4",
-    texto: "#1a1a1a",
-    textoSec: "#777",
-    textoMuto: "#999",
-    separador: "#f0ece2",
-    slotBg: "#fff",
-    slotOcupBg: "#f0ece2",
-    slotOcupColor: "#ccc",
-  }, [modoEscuro, fundoEscuro, cardEscuro, fundoClaro]);
+    cardBorder: "#e4e8f4",
+    inputBg: "#f6f8fd",
+    inputBorder: "#e4e8f4",
+    texto: "#12142a",
+    textoSec: "#5a6187",
+    textoMuto: "#8a90ad",
+    separador: "#eceff7",
+    slotBg: "#ffffff",
+    slotOcupBg: "#eef1fb",
+    slotOcupColor: "#c3c8da",
+  }, [modoEscuro]);
 
   // ---------- Carregar o negocio do link ----------
   useEffect(() => {
@@ -310,14 +320,14 @@ function ClienteAgendamento() {
   // =====================================================================
   if (!profId && !token) {
     return (
-      <div className="min-h-screen" style={{ background: modoEscuro ? "#1a1a1a" : "#f4f1ea" }}>
+      <div className="min-h-screen" style={{ background: modoEscuro ? "#070912" : "#eef1fb", color: modoEscuro ? "#f4f6ff" : "#12142a" }}>
         <Cabecalho modoEscuro={modoEscuro} onToggle={toggle} />
         <main className="mx-auto flex w-full max-w-[460px] flex-1 flex-col items-center px-5 py-16 text-center">
           <div className="text-[44px]">📅</div>
-          <h1 className="mt-3 font-display text-[24px] font-semibold" style={{ color: modoEscuro ? "#f4f1ea" : "#1a1a1a" }}>
+          <h1 className="mt-3 font-display text-[24px] font-bold">
             Agendamento AgendaSonay
           </h1>
-          <p className="mt-2 leading-relaxed" style={{ color: modoEscuro ? "rgba(244,241,234,0.6)" : "#666" }}>
+          <p className="mt-2 leading-relaxed" style={{ color: modoEscuro ? "#9aa3c7" : "#5a6187" }}>
             Para marcar um horário, abra o <b>link de agendamento</b> que o seu profissional enviou.
           </p>
         </main>
@@ -330,64 +340,64 @@ function ClienteAgendamento() {
   if (token) {
     if (tokenCarregando) {
       return (
-        <>
+        <div className="min-h-screen" style={{ background: modoEscuro ? "#070912" : "#eef1fb", color: modoEscuro ? "#f4f6ff" : "#12142a" }}>
           <Cabecalho modoEscuro={modoEscuro} onToggle={toggle} />
-          <main className="mx-auto w-full max-w-[460px] px-5 py-16 text-center text-[#999]">
+          <main className="mx-auto w-full max-w-[460px] px-5 py-16 text-center" style={{ color: modoEscuro ? "#9aa3c7" : "#5a6187" }}>
             Carregando...
           </main>
-        </>
+        </div>
       );
     }
     if (tokenErro) {
       return (
-        <>
+        <div className="min-h-screen" style={{ background: modoEscuro ? "#070912" : "#eef1fb", color: modoEscuro ? "#f4f6ff" : "#12142a" }}>
           <Cabecalho modoEscuro={modoEscuro} onToggle={toggle} />
           <main className="mx-auto flex w-full max-w-[460px] flex-col items-center px-5 py-16 text-center">
             <div className="text-[44px]">🔌</div>
-            <h1 className="mt-3 font-display text-[22px] font-semibold">Não foi possível abrir</h1>
-            <p className="mt-2 leading-relaxed text-[#666]">{tokenErro}</p>
+            <h1 className="mt-3 font-display text-[22px] font-bold">Não foi possível abrir</h1>
+            <p className="mt-2 leading-relaxed" style={{ color: modoEscuro ? "#9aa3c7" : "#5a6187" }}>{tokenErro}</p>
           </main>
-        </>
+        </div>
       );
     }
     if (!agToken) {
       return (
-        <>
+        <div className="min-h-screen" style={{ background: modoEscuro ? "#070912" : "#eef1fb", color: modoEscuro ? "#f4f6ff" : "#12142a" }}>
           <Cabecalho modoEscuro={modoEscuro} onToggle={toggle} />
-          <main className="mx-auto w-full max-w-[460px] px-5 py-16 text-center text-[#999]">
+          <main className="mx-auto w-full max-w-[460px] px-5 py-16 text-center" style={{ color: modoEscuro ? "#9aa3c7" : "#5a6187" }}>
             Carregando...
           </main>
-        </>
+        </div>
       );
     }
 
-    const { fundoEscuro: fundoToken, cardEscuro: cardToken, destaque: destaqueToken, fundoClaro: fundoClaroToken, forte: forteToken } = coresDoNicho(agToken.prof_nicho);
+    const dataNicheToken = nicheData(agToken.prof_nicho);
     const temaToken = modoEscuro ? {
-      pageBg: fundoToken,
-      cardBg: cardToken,
-      cardBorder: "rgba(255,255,255,0.1)",
-      inputBg: "rgba(255,255,255,0.06)",
-      inputBorder: "rgba(255,255,255,0.15)",
-      texto: "#f4f1ea",
-      textoSec: "rgba(244,241,234,0.6)",
-      textoMuto: "rgba(244,241,234,0.4)",
+      pageBg: "#070912",
+      cardBg: "rgba(255,255,255,0.045)",
+      cardBorder: "rgba(255,255,255,0.10)",
+      inputBg: "rgba(255,255,255,0.04)",
+      inputBorder: "rgba(255,255,255,0.12)",
+      texto: "#f4f6ff",
+      textoSec: "#9aa3c7",
+      textoMuto: "rgba(154,163,199,0.6)",
       separador: "rgba(255,255,255,0.08)",
-      slotBg: "rgba(255,255,255,0.08)",
-      slotOcupBg: "rgba(255,255,255,0.03)",
-      slotOcupColor: "rgba(244,241,234,0.25)",
+      slotBg: "rgba(255,255,255,0.05)",
+      slotOcupBg: "rgba(255,255,255,0.02)",
+      slotOcupColor: "rgba(244,246,255,0.25)",
     } : {
-      pageBg: fundoClaroToken,
+      pageBg: "#eef1fb",
       cardBg: "#ffffff",
-      cardBorder: "#e6e0d4",
-      inputBg: "#fafaf7",
-      inputBorder: "#e6e0d4",
-      texto: "#1a1a1a",
-      textoSec: "#777",
-      textoMuto: "#999",
-      separador: "#f0ece2",
-      slotBg: "#fff",
-      slotOcupBg: "#f0ece2",
-      slotOcupColor: "#ccc",
+      cardBorder: "#e4e8f4",
+      inputBg: "#f6f8fd",
+      inputBorder: "#e4e8f4",
+      texto: "#12142a",
+      textoSec: "#5a6187",
+      textoMuto: "#8a90ad",
+      separador: "#eceff7",
+      slotBg: "#ffffff",
+      slotOcupBg: "#eef1fb",
+      slotOcupColor: "#c3c8da",
     };
 
     const confirmado = agToken.status === "confirmado";
@@ -396,19 +406,19 @@ function ClienteAgendamento() {
     });
 
     return (
-      <div className="min-h-screen" style={{ background: temaToken.pageBg, color: temaToken.texto }}>
-        <Cabecalho fundoEscuro={fundoToken} modoEscuro={modoEscuro} onToggle={toggle} />
+      <div data-niche={dataNicheToken} className="min-h-screen" style={{ background: temaToken.pageBg, color: temaToken.texto }}>
+        <Cabecalho modoEscuro={modoEscuro} onToggle={toggle} />
         <main className="mx-auto w-full max-w-[1000px] flex-1 px-5 py-7">
           <div className="card-fade mx-auto max-w-[460px]">
             <p className="mb-5 text-center text-[13px] uppercase tracking-wider" style={{ color: temaToken.textoMuto }}>
               Seu agendamento
             </p>
-            <div className="rounded-[14px] p-7" style={{ background: temaToken.cardBg, border: `1px solid ${temaToken.cardBorder}` }}>
+            <div className="rounded-[20px] p-7" style={{ background: temaToken.cardBg, border: `1px solid ${temaToken.cardBorder}` }}>
               <div className="text-center">
-                <h2 className="font-display text-[22px] font-semibold">{agToken.prof_nome}</h2>
+                <h2 className="font-display text-[22px] font-bold">{agToken.prof_nome}</h2>
                 <div
-                  className="mt-1.5 inline-block rounded-full px-2.5 py-1 text-xs font-bold"
-                  style={{ background: destaqueToken + "22", color: destaqueToken }}
+                  className="mt-2 inline-block rounded-full px-3 py-1 font-grotesk text-[11px] font-bold text-white"
+                  style={{ background: GRAD, boxShadow: "0 4px 14px -4px var(--accent)" }}
                 >
                   {rotuloNicho(agToken.prof_nicho)}
                 </div>
@@ -446,8 +456,8 @@ function ClienteAgendamento() {
                 <div className="mt-5 flex flex-col gap-2">
                   <button
                     onClick={() => { setRemarcando(true); setRemData(hoje); setRemHora(""); setRemErro(null); }}
-                    className="w-full rounded-[10px] py-3 text-[15px] font-bold text-white"
-                    style={{ background: forteToken }}
+                    className="w-full rounded-[12px] py-3 font-grotesk text-[15px] font-bold text-white transition hover:-translate-y-0.5"
+                    style={{ background: GRAD, boxShadow: "0 12px 30px -12px var(--accent)" }}
                   >
                     Remarcar horário
                   </button>
@@ -499,9 +509,9 @@ function ClienteAgendamento() {
                                 onClick={() => setRemHora(h)}
                                 className="rounded-lg border py-2.5 text-sm font-medium"
                                 style={{
-                                  background: sel ? forteToken : ocupado ? temaToken.slotOcupBg : temaToken.slotBg,
+                                  background: sel ? GRAD : ocupado ? temaToken.slotOcupBg : temaToken.slotBg,
                                   color: sel ? "#fff" : ocupado ? temaToken.slotOcupColor : temaToken.texto,
-                                  borderColor: sel ? forteToken : temaToken.cardBorder,
+                                  borderColor: sel ? "transparent" : temaToken.cardBorder,
                                   textDecoration: ocupado ? "line-through" : "none",
                                   cursor: ocupado ? "not-allowed" : "pointer",
                                 }}
@@ -518,8 +528,11 @@ function ClienteAgendamento() {
                     <button
                       onClick={confirmarRemarcar}
                       disabled={!remData || !remHora || remEnviando}
-                      className="flex-1 rounded-[10px] py-3 text-[15px] font-bold text-white"
-                      style={{ background: !remData || !remHora || remEnviando ? "#ddd" : "#1a1a1a", cursor: !remData || !remHora || remEnviando ? "not-allowed" : "pointer" }}
+                      className="flex-1 rounded-[12px] py-3 font-grotesk text-[15px] font-bold transition disabled:cursor-not-allowed"
+                      style={{
+                        background: !remData || !remHora || remEnviando ? temaToken.slotOcupBg : GRAD,
+                        color: !remData || !remHora || remEnviando ? temaToken.textoMuto : "#fff",
+                      }}
                     >
                       {remEnviando ? "Remarcando..." : "Confirmar"}
                     </button>
@@ -543,31 +556,31 @@ function ClienteAgendamento() {
   // =====================================================================
   if (carregando) {
     return (
-      <>
+      <div className="min-h-screen" style={{ background: modoEscuro ? "#070912" : "#eef1fb", color: modoEscuro ? "#f4f6ff" : "#12142a" }}>
         <Cabecalho modoEscuro={modoEscuro} onToggle={toggle} />
-        <main className="mx-auto w-full max-w-[460px] px-5 py-16 text-center text-[#999]">
+        <main className="mx-auto w-full max-w-[460px] px-5 py-16 text-center" style={{ color: modoEscuro ? "#9aa3c7" : "#5a6187" }}>
           Carregando...
         </main>
-      </>
+      </div>
     );
   }
 
   if (erroCarga) {
     return (
-      <>
+      <div className="min-h-screen" style={{ background: modoEscuro ? "#070912" : "#eef1fb", color: modoEscuro ? "#f4f6ff" : "#12142a" }}>
         <Cabecalho modoEscuro={modoEscuro} onToggle={toggle} />
         <main className="mx-auto flex w-full max-w-[460px] flex-col items-center px-5 py-16 text-center">
           <div className="text-[44px]">🔌</div>
-          <h1 className="mt-3 font-display text-[22px] font-semibold">Não foi possível abrir</h1>
-          <p className="mt-2 leading-relaxed text-[#666]">{erroCarga}</p>
+          <h1 className="mt-3 font-display text-[22px] font-bold">Não foi possível abrir</h1>
+          <p className="mt-2 leading-relaxed" style={{ color: modoEscuro ? "#9aa3c7" : "#5a6187" }}>{erroCarga}</p>
         </main>
-      </>
+      </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ background: tema.pageBg, color: tema.texto }}>
-      <Cabecalho fundoEscuro={fundoEscuro} modoEscuro={modoEscuro} onToggle={toggle} />
+    <div data-niche={dataNiche} className="min-h-screen" style={{ background: tema.pageBg, color: tema.texto }}>
+      <Cabecalho modoEscuro={modoEscuro} onToggle={toggle} />
       <main className="mx-auto w-full max-w-[1000px] flex-1 px-5 py-7">
         {erro && (
           <div className="mx-auto mb-5 max-w-[460px] rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -577,18 +590,19 @@ function ClienteAgendamento() {
 
         {ok ? (
           <div
-            className="card-fade mx-auto mt-10 max-w-[440px] rounded-[14px] p-10 text-center"
+            className="card-fade mx-auto mt-10 max-w-[440px] rounded-[20px] p-10 text-center"
             style={{ background: tema.cardBg, border: `1px solid ${tema.cardBorder}` }}
           >
             <div className="text-[44px]">✅</div>
-            <h2 className="mt-3 font-display text-[26px] font-semibold">Agendamento confirmado!</h2>
+            <h2 className="mt-3 font-display text-[26px] font-bold">Agendamento confirmado!</h2>
             <p className="mt-1.5 leading-relaxed" style={{ color: tema.textoSec }}>
               {nome}, seu horário em <b>{prof?.nome}</b> para <b>{servico}</b> às{" "}
               <b>{bonito(hora)}</b> ({rotuloData}) está reservado. Você receberá um lembrete no WhatsApp 1 dia antes.
             </p>
             <button
               onClick={() => { setOk(false); setNome(""); setTelefone(""); setHora(""); setRefresh((r) => r + 1); }}
-              className="mt-5 rounded-[9px] bg-[#1a1a1a] px-5 py-2.5 font-medium text-white"
+              className="mt-5 rounded-[12px] px-5 py-2.5 font-grotesk font-bold text-white transition hover:-translate-y-0.5"
+              style={{ background: GRAD }}
             >
               Novo agendamento
             </button>
@@ -599,14 +613,14 @@ function ClienteAgendamento() {
               Marque seu horário
             </p>
             <div
-              className="mx-auto max-w-[460px] rounded-[14px] p-7"
+              className="mx-auto max-w-[460px] rounded-[20px] p-7"
               style={{ background: tema.cardBg, border: `1px solid ${tema.cardBorder}` }}
             >
               <div className="text-center">
-                <h2 className="font-display text-[22px] font-semibold">{prof?.nome}</h2>
+                <h2 className="font-display text-[22px] font-bold">{prof?.nome}</h2>
                 <div
-                  className="mt-1.5 inline-block rounded-full px-2.5 py-1 text-xs font-bold"
-                  style={{ background: destaque + "22", color: destaque }}
+                  className="mt-2 inline-block rounded-full px-3 py-1 font-grotesk text-[11px] font-bold text-white"
+                  style={{ background: GRAD, boxShadow: "0 4px 14px -4px var(--accent)" }}
                 >
                   {prof ? rotuloNicho(prof.nicho) : ""}
                 </div>
@@ -683,11 +697,11 @@ function ClienteAgendamento() {
                         key={h}
                         disabled={ocupado}
                         onClick={() => setHora(h)}
-                        className="rounded-lg border py-2.5 text-sm font-medium"
+                        className="rounded-lg border py-2.5 font-grotesk text-sm font-medium"
                         style={{
-                          background: sel ? forte : ocupado ? tema.slotOcupBg : tema.slotBg,
+                          background: sel ? GRAD : ocupado ? tema.slotOcupBg : tema.slotBg,
                           color: sel ? "#fff" : ocupado ? tema.slotOcupColor : tema.texto,
-                          borderColor: sel ? forte : tema.cardBorder,
+                          borderColor: sel ? "transparent" : tema.cardBorder,
                           textDecoration: ocupado ? "line-through" : "none",
                           cursor: ocupado ? "not-allowed" : "pointer",
                         }}
@@ -702,10 +716,10 @@ function ClienteAgendamento() {
               <button
                 onClick={agendar}
                 disabled={!podeConfirmar || enviando}
-                className="w-full rounded-[10px] py-3.5 text-[15px] font-bold text-white"
+                className="w-full rounded-[12px] py-3.5 font-grotesk text-[15px] font-bold transition disabled:cursor-not-allowed"
                 style={{
-                  background: !podeConfirmar || enviando ? "#ddd" : "#1a1a1a",
-                  cursor: !podeConfirmar || enviando ? "not-allowed" : "pointer",
+                  background: !podeConfirmar || enviando ? tema.slotOcupBg : GRAD,
+                  color: !podeConfirmar || enviando ? tema.textoMuto : "#fff",
                 }}
               >
                 {enviando ? "Confirmando..." : "Confirmar agendamento"}
@@ -722,17 +736,17 @@ export default function ClientePage() {
   return (
     <Suspense
       fallback={
-        <>
-          <header className="bg-[#1a1a1a] text-[#f4f1ea]">
+        <div className="min-h-screen bg-[#070912] text-[#f4f6ff]">
+          <header className="border-b border-white/8">
             <div className="mx-auto flex max-w-[1000px] items-center px-5 py-3.5 gap-2.5">
-              <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg font-display font-bold text-white" style={{ background: "linear-gradient(135deg,#22d3ee,#a855f7)" }}>S</span>
-              <span className="font-display text-[19px] font-semibold">AgendaSonay</span>
+              <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg font-display font-extrabold text-white" style={{ background: GRAD }}>S</span>
+              <span className="font-display text-[19px] font-bold">AgendaSonay</span>
             </div>
           </header>
-          <main className="mx-auto w-full max-w-[460px] px-5 py-16 text-center text-[#999]">
+          <main className="mx-auto w-full max-w-[460px] px-5 py-16 text-center text-[#9aa3c7]">
             Carregando...
           </main>
-        </>
+        </div>
       }
     >
       <ClienteAgendamento />
