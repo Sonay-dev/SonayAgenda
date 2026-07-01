@@ -39,6 +39,7 @@ export default function AdminPage() {
   const [ocupadoId, setOcupadoId] = useState<string | null>(null);
   const [modoEscuro, setModoEscuro] = useState(true);
   const [busca, setBusca] = useState("");
+  const [menuAberto, setMenuAberto] = useState(false);
 
   // ---------- Persistir preferência de tema ----------
   useEffect(() => {
@@ -139,7 +140,7 @@ export default function AdminPage() {
     modoEscuro
       ? {
           pageBg: "#070912",
-          sideBg: "rgba(255,255,255,0.02)",
+          sideBg: "#0b0e1a",
           cardBg: "rgba(255,255,255,0.045)",
           cardBorder: "rgba(255,255,255,0.10)",
           inputBg: "rgba(255,255,255,0.04)",
@@ -239,9 +240,21 @@ export default function AdminPage() {
   return (
     <div id="topo" className="min-h-screen" style={{ background: t.pageBg, color: t.texto }}>
       <div className="mx-auto flex min-h-screen max-w-[1280px]">
+        {/* Backdrop do drawer (mobile/tablet) */}
+        {menuAberto && (
+          <div
+            className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden"
+            onClick={() => setMenuAberto(false)}
+            aria-hidden
+          />
+        )}
+
         {/* ================= SIDEBAR ================= */}
         <aside
-          className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col justify-between px-4 py-5 lg:flex"
+          className={
+            "fixed inset-y-0 left-0 z-40 flex h-screen w-64 shrink-0 flex-col justify-between px-4 py-5 shadow-2xl transition-transform duration-300 lg:sticky lg:top-0 lg:z-auto lg:w-60 lg:translate-x-0 lg:shadow-none " +
+            (menuAberto ? "translate-x-0" : "-translate-x-full")
+          }
           style={{ background: t.sideBg, borderRight: `1px solid ${t.cardBorder}` }}
         >
           <div>
@@ -263,6 +276,7 @@ export default function AdminPage() {
                 <a
                   key={n.rotulo}
                   href={n.href}
+                  onClick={() => setMenuAberto(false)}
                   className="flex items-center gap-3 rounded-[11px] px-3 py-2.5 text-sm font-medium transition"
                   style={
                     i === 0
@@ -300,13 +314,15 @@ export default function AdminPage() {
               borderBottom: `1px solid ${t.cardBorder}`,
             }}
           >
-            {/* marca só no mobile (sem sidebar) */}
-            <span
-              className="flex h-8 w-8 items-center justify-center rounded-[10px] font-display text-base font-extrabold text-white lg:hidden"
-              style={{ background: GRAD }}
+            {/* botão do menu (abre a sidebar no mobile/tablet) */}
+            <button
+              onClick={() => setMenuAberto(true)}
+              aria-label="Abrir menu"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] text-lg lg:hidden"
+              style={{ background: t.inputBg, border: `1px solid ${t.cardBorder}`, color: t.texto }}
             >
-              S
-            </span>
+              ☰
+            </button>
 
             <div
               className="flex flex-1 items-center gap-2 rounded-full px-4 py-2"
